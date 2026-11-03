@@ -110,6 +110,19 @@ async def core_chat(request: ChatRequest) -> dict[str, str]:
         raise HTTPException(status_code=502, detail="NOVA could not process the AI provider response. Please try again.")
 
 
+@app.get("/api/markets/status")
+async def market_status() -> dict[str, Any]:
+    configured = bool(os.getenv("TWELVE_DATA_API_KEY", "").strip())
+    return {
+        "status": "connected" if configured else "needs_configuration",
+        "configured": configured,
+        "provider": "Twelve Data",
+        "symbols": list(SYMBOLS),
+        "mode": "read-only",
+        "refresh_interval_seconds": 60,
+    }
+
+
 @app.get("/api/markets")
 async def markets() -> dict[str, Any]:
     api_key = os.getenv("TWELVE_DATA_API_KEY", "").strip()
@@ -136,8 +149,13 @@ async def markets() -> dict[str, Any]:
                     errors.append(f"{symbol}: {payload.get('message', 'Provider error')}")
                     continue
                 raw_price = payload.get("close") or payload.get("price")
-                if raw_price is None:
-                    errors.append(f"{symbol}: provider did not return a price")
+                try:
+                    numeric_price = float(raw_price)
+                except (TypeError, ValueError):
+                    errors.append(f"{symbol}: provider returned an invalid price")
+                    continue
+                if numeric_price <= 0 or not __import__("math").isfinite(numeric_price):
+                    errors.append(f"{symbol}: provider returned an invalid price")
                     continue
                 quotes.append({
                     "symbol": symbol,
