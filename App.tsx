@@ -24,6 +24,7 @@ type Quote = {
 type ApiResponse = { data: Quote[]; status: string; fetched_at: string; errors?: string[] };
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type CoreStatus = { status: string; configured: boolean; provider: string; model: string; mode: string };
+type MarketConnection = { status: string; configured: boolean; provider: string; symbols: string[]; mode: string; refresh_interval_seconds: number };
 
 const SYMBOLS: SymbolCode[] = ["EUR/USD", "GBP/USD", "XAU/USD"];
 const API_BASE = process.env.EXPO_PUBLIC_NOVA_API_URL?.replace(/\/$/, "");
@@ -38,6 +39,7 @@ export default function App() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [marketLoading, setMarketLoading] = useState(false);
   const [marketError, setMarketError] = useState<string | null>(null);
+  const [marketConnection, setMarketConnection] = useState<MarketConnection | null>(null);
   const [lastFetched, setLastFetched] = useState<string | null>(null);
   const [coreStatus, setCoreStatus] = useState<CoreStatus | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -81,6 +83,40 @@ export default function App() {
       setMarketLoading(false);
     }
   }, []);
+
+
+  useEffect(() => {
+    if (!API_BASE) {
+      setMarketError("NOVA server is not connected. Configure EXPO_PUBLIC_NOVA_API_URL.");
+      return;
+    }
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const connectMarket = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/markets/status`);
+        const status = await response.json();
+        if (!response.ok) throw new Error(status.detail || "Could not check market connection.");
+        if (cancelled) return;
+        setMarketConnection(status as MarketConnection);
+        if (status.configured) {
+          await refreshMarkets();
+        } else {
+          setMarketError("Twelve Data is not configured on the backend. Add TWELVE_DATA_API_KEY to the backend host's private environment variables.");
+        }
+      } catch (error) {
+        if (!cancelled) setMarketError(error instanceof Error ? error.message : "Could not check market connection.");
+      }
+    };
+    void connectMarket();
+    timer = setInterval(() => {
+      if (marketConnection?.configured) void refreshMarkets();
+    }, 60000);
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
+  }, [marketConnection?.configured, refreshMarkets]);
 
   const sendMessage = useCallback(async () => {
     const content = draft.trim();
@@ -187,8 +223,9 @@ export default function App() {
               <View style={styles.headerCopy}>
                 <Text style={styles.cardTitle}>Market intelligence</Text>
                 <Text style={styles.muted}>EUR/USD · GBP/USD · XAU/USD</Text>
+                <Text style={styles.quoteState}>{marketConnection?.configured ? "PROVIDER KEY CONFIGURED · AUTO-REFRESH 60 SEC" : "PROVIDER NOT CONNECTED"}</Text>
               </View>
-              <View style={styles.readOnlyBadge}><Text style={styles.readOnlyText}>READ ONLY</Text></View>
+              <View style={styles.readOnlyBadge}><Text style={styles.readOnlyText}>{marketConnection?.configured ? "FEED CONFIGURED" : "READ ONLY"}</Text></View>
             </View>
             <Text style={styles.marketDescription}>Live values appear only when the configured market-data provider returns verified quotes.</Text>
             {SYMBOLS.map((symbol) => {
