@@ -56,3 +56,24 @@ def test_markets_require_real_provider_key(monkeypatch):
     response = client.get("/api/markets")
     assert response.status_code == 503
     assert "No sample prices" in response.json()["detail"]
+
+
+def test_market_status_reports_missing_provider_key(monkeypatch):
+    monkeypatch.delenv("TWELVE_DATA_API_KEY", raising=False)
+    response = client.get("/api/markets/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["configured"] is False
+    assert body["provider"] == "Twelve Data"
+    assert body["mode"] == "read-only"
+    assert "test-secret-value" not in response.text
+
+
+def test_market_status_reports_configured_provider_without_leaking_key(monkeypatch):
+    monkeypatch.setenv("TWELVE_DATA_API_KEY", "market-test-secret")
+    response = client.get("/api/markets/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["configured"] is True
+    assert body["symbols"] == ["EUR/USD", "GBP/USD", "XAU/USD"]
+    assert "market-test-secret" not in response.text
