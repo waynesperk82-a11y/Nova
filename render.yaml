@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: nova-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: NOVA_AI_API_KEY
+        sync: false
+      - key: NOVA_AI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: NOVA_AI_MODEL
+        value: gpt-4.1-mini
+      - key: TWELVE_DATA_API_KEY
+        sync: false
