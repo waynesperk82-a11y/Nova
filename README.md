@@ -1,28 +1,47 @@
-# NOVA Market AI
+# NOVA — Unified Intelligence Prototype
 
-Android-first, read-only market information dashboard for EUR/USD, GBP/USD, and XAU/USD.
+Android-first AI workspace with a central NOVA Core, an OpenAI-compatible chat connection, and a read-only real-market-data dashboard.
 
-## No simulated content
-- No virtual balance, paper positions, sample prices, or simulated profit/loss.
-- NOVA displays only values returned by the configured market-data provider.
-- If a quote is missing or the connection fails, the app displays an unavailable state instead of inventing a value.
-- This project does not connect to broker accounts or submit buy/sell orders.
+## Current capabilities
+
+- **NOVA Core chat:** sends a bounded conversation to a configured OpenAI-compatible chat-completions API.
+- **Core status:** reports whether an AI provider key is configured without exposing credentials.
+- **Market dashboard:** requests EUR/USD, GBP/USD, and XAU/USD quotes from Twelve Data.
+- **Honest unavailable states:** no fabricated market prices, simulated balances, sample profit/loss, or pretend AI responses.
+- **Permission boundary:** this version is advisory. It has no broker connection, order endpoint, web-browsing tool, or machine-control capability.
 
 ## Architecture
+
 - `App.tsx`: Expo / React Native Android interface.
-- `backend/main.py`: small FastAPI service that requests quotes from Twelve Data.
-- The provider key stays on the backend as `TWELVE_DATA_API_KEY`; never add it to the mobile app or commit it to GitHub.
-- The app reads the backend URL from `EXPO_PUBLIC_NOVA_API_URL`.
+- `backend/main.py`: FastAPI service for NOVA Core and market data.
+- `NOVA_AI_API_KEY`: private backend environment variable for an OpenAI-compatible API.
+- `NOVA_AI_BASE_URL`: optional API base URL; defaults to `https://api.openai.com/v1`.
+- `NOVA_AI_MODEL`: optional model name; defaults to `gpt-4.1-mini`.
+- `TWELVE_DATA_API_KEY`: private market-data provider key.
+- `EXPO_PUBLIC_NOVA_API_URL`: HTTPS base URL of the deployed backend. This value is public and must never contain a secret.
 
-## Configure the read-only data connection
-1. Deploy the `backend` folder to a Python host.
-2. Set `TWELVE_DATA_API_KEY` as a private environment variable on that backend host. Do not paste it into chat, source code, or a public repository.
-3. Set `EXPO_PUBLIC_NOVA_API_URL` in the Expo build environment to the backend's HTTPS base URL.
-4. Rebuild/restart the Expo app and tap **Refresh real market data**.
+Never commit API keys or put them in Expo public environment variables.
 
-A provider account and plan may have eligibility, symbol-coverage, latency, and request-limit conditions. A successful API response does not by itself guarantee an exchange-real-time feed; the provider's timestamp and entitlement determine the data's freshness.
+## Configure NOVA Core
+
+On the backend host, set:
+
+- `NOVA_AI_API_KEY` to your provider key.
+- Optionally set `NOVA_AI_BASE_URL` and `NOVA_AI_MODEL` for a compatible provider/model.
+
+The mobile app calls:
+
+- `GET /api/core/status`
+- `POST /api/core/chat`
+
+If the AI key is missing, NOVA returns an explicit setup message rather than pretending to think.
+
+## Configure real market data
+
+Set `TWELVE_DATA_API_KEY` as a private backend environment variable. Provider plans may have symbol, latency, and request-limit restrictions. Provider timestamps and entitlements determine freshness.
 
 ## Run the backend locally
+
 ```bash
 cd backend
 python -m venv .venv
@@ -32,16 +51,31 @@ uvicorn main:app --reload --port 8000
 ```
 
 ## Run the Android app
+
 ```bash
 npm install
 ```
-Set `EXPO_PUBLIC_NOVA_API_URL` to your backend address in the Expo environment, then:
+
+Set `EXPO_PUBLIC_NOVA_API_URL` to the backend URL, then:
+
 ```bash
 npx expo start
 ```
 
 ## API
-- `GET /health`: reports whether a provider key is configured; it never returns the key.
-- `GET /api/markets`: returns provider-supplied quotes or an explicit error.
 
-The API is read-only. It intentionally has no broker credentials, order endpoints, or trade execution code.
+- `GET /health`: reports backend and provider configuration without returning secrets.
+- `GET /api/core/status`: reports whether NOVA Core is configured.
+- `POST /api/core/chat`: returns a model-generated advisory response.
+- `GET /api/markets`: returns genuine provider quotes or an explicit error.
+
+## Next engineering milestones
+
+1. Add persistent, user-controlled conversation memory.
+2. Add a research connector with citations and source timestamps.
+3. Add a typed planning/task engine with visible approval checkpoints.
+4. Add authenticated users, rate limits, audit logs, and per-capability permissions.
+5. Add broker integrations only after secure credential handling, sandbox validation, and explicit trade approvals.
+6. Add machine/industrial integrations through isolated adapters, simulation environments, safety interlocks, and human supervision.
+
+NOVA's central intelligence can coordinate these capabilities, but this prototype does not yet implement autonomous agents or external action execution.
