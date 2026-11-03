@@ -1,81 +1,115 @@
-# NOVA — Unified Intelligence Prototype
+# NOVA — Cross-platform unified intelligence
 
-Android-first AI workspace with a central NOVA Core, an OpenAI-compatible chat connection, and a read-only real-market-data dashboard.
+NOVA is an Android-first, cross-platform AI workspace built with Expo / React Native and a FastAPI backend. One shared mobile/web codebase targets Android, iOS/iPadOS, and the web. On Windows, macOS, and Linux, users can run the web app in a modern browser.
+
+## Platform support
+
+| Platform | Delivery |
+| --- | --- |
+| Android phones/tablets | Expo / EAS Android build |
+| iPhone and iPad | Expo / EAS iOS build |
+| Windows, macOS, Linux | Responsive web app in a browser |
+| Chrome, Edge, Firefox, Safari | Expo web export, subject to browser support |
+
+This repository does not currently package native Windows or macOS desktop binaries. The web app is the computer experience. A dedicated desktop shell can be added later if there is a real need.
 
 ## Current capabilities
 
-- **NOVA Core chat:** sends a bounded conversation to a configured OpenAI-compatible chat-completions API.
-- **Core status:** reports whether an AI provider key is configured without exposing credentials.
-- **Market dashboard:** requests EUR/USD, GBP/USD, and XAU/USD quotes from Twelve Data.
-- **Honest unavailable states:** no fabricated market prices, simulated balances, sample profit/loss, or pretend AI responses.
-- **Permission boundary:** this version is advisory. It has no broker connection, order endpoint, web-browsing tool, or machine-control capability.
+- NOVA Core chat through a configured OpenAI-compatible API.
+- Core connection status without exposing credentials.
+- Read-only market-data dashboard for EUR/USD, GBP/USD, and XAU/USD.
+- Explicit unavailable states instead of invented prices or fake AI responses.
+- Shared interface code for Android, iOS, and web.
+- Backend-only secrets; no provider key belongs in the app bundle.
+
+This is an advisory prototype. It does not browse the web, connect to broker accounts, place trades, or control physical machines.
 
 ## Architecture
 
-- `App.tsx`: Expo / React Native Android interface.
+- `App.tsx`: shared Expo / React Native interface.
 - `backend/main.py`: FastAPI service for NOVA Core and market data.
-- `NOVA_AI_API_KEY`: private backend environment variable for an OpenAI-compatible API.
-- `NOVA_AI_BASE_URL`: optional API base URL; defaults to `https://api.openai.com/v1`.
-- `NOVA_AI_MODEL`: optional model name; defaults to `gpt-4.1-mini`.
+- `backend/tests/`: API contract tests.
+- `eas.json`: EAS build profiles for Android and iOS.
+- `.github/workflows/ci.yml`: TypeScript, web export, and backend test checks.
+- `render.yaml`: optional Render backend deployment blueprint.
+
+## Requirements
+
+- Node.js 20 or newer and npm.
+- Python 3.11 or newer for backend development.
+- Expo Go for quick device preview, or EAS Build for installable Android/iOS builds.
+- A deployed HTTPS backend for real devices outside your local network.
+
+## Configure environment variables
+
+Copy `.env.example` as a reference. Set these on the backend host, not in the mobile app:
+
+- `NOVA_AI_API_KEY`: private AI provider key.
+- `NOVA_AI_BASE_URL`: optional OpenAI-compatible API base URL.
+- `NOVA_AI_MODEL`: optional model name.
 - `TWELVE_DATA_API_KEY`: private market-data provider key.
-- `EXPO_PUBLIC_NOVA_API_URL`: HTTPS base URL of the deployed backend. This value is public and must never contain a secret.
 
-Never commit API keys or put them in Expo public environment variables.
+Set `EXPO_PUBLIC_NOVA_API_URL` in the Expo build environment to the HTTPS base URL of the deployed backend. This variable is public by design; never put a secret in it.
 
-## Configure NOVA Core
+## Run the app
 
-On the backend host, set:
+```bash
+npm install
+npx expo start
+```
 
-- `NOVA_AI_API_KEY` to your provider key.
-- Optionally set `NOVA_AI_BASE_URL` and `NOVA_AI_MODEL` for a compatible provider/model.
+- Press `a` to open Android (with Android tooling installed).
+- Press `i` to open iOS Simulator (macOS with Xcode required).
+- Press `w` to open the web app.
 
-The mobile app calls:
+Or export a static web build:
 
-- `GET /api/core/status`
-- `POST /api/core/chat`
+```bash
+npm run export:web
+```
 
-If the AI key is missing, NOVA returns an explicit setup message rather than pretending to think.
+The web output is generated in `dist/` and can be deployed to a static host.
 
-## Configure real market data
+## Build installable mobile apps
 
-Set `TWELVE_DATA_API_KEY` as a private backend environment variable. Provider plans may have symbol, latency, and request-limit restrictions. Provider timestamps and entitlements determine freshness.
+Install and configure EAS CLI, then authenticate with your Expo account:
+
+```bash
+npx eas-cli login
+npx eas-cli build --platform android --profile preview
+npx eas-cli build --platform ios --profile preview
+```
+
+An Apple Developer account is required for normal iOS device distribution. EAS may prompt for signing credentials. Android preview builds use an installable APK profile; production Android builds use an app bundle.
 
 ## Run the backend locally
 
 ```bash
 cd backend
 python -m venv .venv
-# Activate the virtual environment, then:
+# Activate the environment, then:
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-## Run the Android app
+For a physical phone, the phone must be able to reach the backend on the network, or use a deployed HTTPS URL. Do not use localhost as the backend URL on a physical phone.
 
-```bash
-npm install
-```
+## API endpoints
 
-Set `EXPO_PUBLIC_NOVA_API_URL` to the backend URL, then:
+- `GET /health`
+- `GET /api/core/status`
+- `POST /api/core/chat`
+- `GET /api/markets`
 
-```bash
-npx expo start
-```
+## Security and production readiness
 
-## API
+Before making the service public, add user authentication, per-user authorization, request throttling, abuse protection, secure secret rotation, monitoring, and audit logging. Restrict CORS to the deployed web origin where appropriate. Do not enable broker execution or machine control without a separately reviewed permission system, sandbox/testing environment, hard safety limits, and human approval.
 
-- `GET /health`: reports backend and provider configuration without returning secrets.
-- `GET /api/core/status`: reports whether NOVA Core is configured.
-- `POST /api/core/chat`: returns a model-generated advisory response.
-- `GET /api/markets`: returns genuine provider quotes or an explicit error.
+## Roadmap
 
-## Next engineering milestones
-
-1. Add persistent, user-controlled conversation memory.
-2. Add a research connector with citations and source timestamps.
-3. Add a typed planning/task engine with visible approval checkpoints.
-4. Add authenticated users, rate limits, audit logs, and per-capability permissions.
-5. Add broker integrations only after secure credential handling, sandbox validation, and explicit trade approvals.
-6. Add machine/industrial integrations through isolated adapters, simulation environments, safety interlocks, and human supervision.
-
-NOVA's central intelligence can coordinate these capabilities, but this prototype does not yet implement autonomous agents or external action execution.
+1. Cross-platform polish and CI (this upgrade).
+2. User accounts and secure, user-controlled persistent memory.
+3. Research connectors with citations and source timestamps.
+4. Shared planning/task engine and visible approval checkpoints.
+5. Broker integrations with demo testing and explicit approvals.
+6. Carefully isolated industrial/device integrations with safety interlocks and human supervision.

@@ -237,7 +237,7 @@ export default function App() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   safe: { flex: 1, backgroundColor: "#07111F" },
-  container: { padding: 18, paddingBottom: 42 },
+  container: { padding: 18, paddingBottom: 42, width: "100%", maxWidth: 920, alignSelf: "center" },
   header: { flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 20 },
   headerCopy: { flex: 1 },
   logo: { width: 44, height: 44, borderRadius: 14, backgroundColor: "#58DCEB", alignItems: "center", justifyContent: "center" },

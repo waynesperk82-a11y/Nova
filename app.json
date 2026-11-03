@@ -3,13 +3,25 @@
     "name": "NOVA Intelligence",
     "slug": "nova-trader-ai",
     "version": "0.2.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "userInterfaceStyle": "dark",
     "android": {
       "package": "com.nova.traderai"
     },
     "splash": {
       "backgroundColor": "#07111F"
+    },
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "ios": {
+      "bundleIdentifier": "com.nova.traderai",
+      "supportsTablet": true
+    },
+    "web": {
+      "bundler": "metro"
     }
   }
 }
