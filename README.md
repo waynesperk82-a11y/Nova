@@ -28,10 +28,10 @@ This is an advisory prototype. It does not browse the web, connect to broker acc
 
 - `App.tsx`: shared Expo / React Native interface.
 - `backend/main.py`: FastAPI service for NOVA Core and market data.
+- `backend/vercel.json`: Vercel FastAPI function configuration.
 - `backend/tests/`: API contract tests.
 - `eas.json`: EAS build profiles for Android and iOS.
 - `.github/workflows/ci.yml`: TypeScript, web export, and backend test checks.
-- `render.yaml`: optional Render backend deployment blueprint.
 
 ## Requirements
 
@@ -42,7 +42,7 @@ This is an advisory prototype. It does not browse the web, connect to broker acc
 
 ## Configure environment variables
 
-Copy `.env.example` as a reference. Set these on the backend host, not in the mobile app:
+Set these on the backend host, not in the mobile app:
 
 - `NOVA_AI_API_KEY`: private AI provider key.
 - `NOVA_AI_BASE_URL`: optional OpenAI-compatible API base URL.
@@ -50,6 +50,21 @@ Copy `.env.example` as a reference. Set these on the backend host, not in the mo
 - `TWELVE_DATA_API_KEY`: private market-data provider key.
 
 Set `EXPO_PUBLIC_NOVA_API_URL` in the Expo build environment to the HTTPS base URL of the deployed backend. This variable is public by design; never put a secret in it.
+
+## Deploy the backend to Vercel
+
+The Vercel project for this API is named `nova-api` and is linked to this GitHub repository. Its project root should be `backend/`, with the framework set to FastAPI. The `backend/vercel.json` file sets the function timeout.
+
+Before deploying a public production API:
+
+1. Add authentication and per-user authorization.
+2. Add request throttling and abuse protection so public callers cannot consume the private AI provider quota.
+3. Restrict CORS to the intended web origin.
+4. Configure the private environment variables listed above in Vercel Project Settings → Environment Variables.
+5. Deploy a preview first and verify `/health`, `/api/core/status`, and `/api/markets/status`.
+6. Only after security checks, promote a tested deployment and set `EXPO_PUBLIC_NOVA_API_URL` to the API's HTTPS origin in Expo/EAS.
+
+Never commit provider keys or paste them into source files, GitHub issues, or chat. Rotate any key that has been exposed.
 
 ## Run the app
 
@@ -99,17 +114,18 @@ For a physical phone, the phone must be able to reach the backend on the network
 - `GET /health`
 - `GET /api/core/status`
 - `POST /api/core/chat`
+- `GET /api/markets/status`
 - `GET /api/markets`
 
 ## Security and production readiness
 
-Before making the service public, add user authentication, per-user authorization, request throttling, abuse protection, secure secret rotation, monitoring, and audit logging. Restrict CORS to the deployed web origin where appropriate. Do not enable broker execution or machine control without a separately reviewed permission system, sandbox/testing environment, hard safety limits, and human approval.
+The API is not yet production-ready for unrestricted public use. Add authentication, per-user authorization, request throttling, abuse protection, secure secret rotation, monitoring, and audit logging before exposing paid AI features publicly. Restrict CORS to the deployed web origin where appropriate. Do not enable broker execution or machine control without a separately reviewed permission system, sandbox/testing environment, hard safety limits, and human approval.
 
 ## Roadmap
 
-1. Cross-platform polish and CI (this upgrade).
-2. User accounts and secure, user-controlled persistent memory.
-3. Research connectors with citations and source timestamps.
-4. Shared planning/task engine and visible approval checkpoints.
-5. Broker integrations with demo testing and explicit approvals.
-6. Carefully isolated industrial/device integrations with safety interlocks and human supervision.
+1. Secure backend deployment and API verification.
+2. Cross-platform polish and EAS builds.
+3. User accounts and secure, user-controlled persistent memory.
+4. Research connectors with citations and source timestamps.
+5. Shared planning/task engine and visible approval checkpoints.
+6. Carefully isolated device integrations with safety interlocks and human supervision.
