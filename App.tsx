@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -9,64 +10,60 @@ import {
   View,
 } from "react-native";
 
-type Asset = "EUR/USD" | "GBP/USD" | "XAU/USD";
-type Side = "BUY" | "SELL";
-type Position = { id: number; asset: Asset; side: Side; entry: number; units: number };
-
-const STARTING_BALANCE = 10000;
-const INITIAL_PRICES: Record<Asset, number> = {
-  "EUR/USD": 1.085,
-  "GBP/USD": 1.27,
-  "XAU/USD": 2350,
+type SymbolCode = "EUR/USD" | "GBP/USD" | "XAU/USD";
+type Quote = {
+  symbol: SymbolCode;
+  price: string;
+  quote_time: string | null;
+  source: string;
+  currency: string | null;
 };
+type ApiResponse = { data: Quote[]; status: string; fetched_at: string };
 
-const money = (value: number) =>
-  value.toLocaleString("en-US", { style: "currency", currency: "USD" });
-const price = (asset: Asset, value: number) =>
-  value.toFixed(asset === "XAU/USD" ? 2 : 5);
+const SYMBOLS: SymbolCode[] = ["EUR/USD", "GBP/USD", "XAU/USD"];
+const API_BASE = process.env.EXPO_PUBLIC_NOVA_API_URL?.replace(/\/$/, "");
+
+function formatTime(value: string | null | undefined) {
+  if (!value) return "Not supplied by data provider";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+}
 
 export default function App() {
-  const [asset, setAsset] = useState<Asset>("EUR/USD");
-  const [prices] = useState(INITIAL_PRICES);
-  const [balance, setBalance] = useState(STARTING_BALANCE);
-  const [closedPnl, setClosedPnl] = useState(0);
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [notice, setNotice] = useState(
-    "NOVA is ready. Market values shown here are placeholders, not live quotes."
-  );
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastFetched, setLastFetched] = useState<string | null>(null);
 
-  const unrealized = useMemo(
-    () =>
-      positions.reduce((sum, p) => {
-        const move = prices[p.asset] - p.entry;
-        return sum + move * p.units * (p.side === "BUY" ? 1 : -1);
-      }, 0),
-    [positions, prices]
-  );
+  const refresh = useCallback(async () => {
+    if (!API_BASE) {
+      setError("Market-data server is not connected. Set EXPO_PUBLIC_NOVA_API_URL to your deployed NOVA read-only API.");
+      setQuotes([]);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/markets`);
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.detail || `Market-data server returned HTTP ${response.status}`);
+      }
+      const result = body as ApiResponse;
+      if (!Array.isArray(result.data) || result.data.length === 0) {
+        throw new Error("The provider returned no market quotes. NOVA will not fill missing values with estimates.");
+      }
+      setQuotes(result.data);
+      setLastFetched(result.fetched_at || new Date().toISOString());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reach the market-data server.");
+      setQuotes([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  function openPaperPosition(side: Side) {
-    const units = asset === "XAU/USD" ? 1 : 1000;
-    const next: Position = {
-      id: Date.now(),
-      asset,
-      side,
-      entry: prices[asset],
-      units,
-    };
-    setPositions((current) => [...current, next]);
-    setNotice(
-      `Paper ${side} opened for ${asset}. This is a hypothetical position only.`
-    );
-  }
-
-  function closePaperPosition(position: Position) {
-    const move = prices[position.asset] - position.entry;
-    const pnl = move * position.units * (position.side === "BUY" ? 1 : -1);
-    setPositions((current) => current.filter((p) => p.id !== position.id));
-    setBalance((current) => current + pnl);
-    setClosedPnl((current) => current + pnl);
-    setNotice(`Paper position closed. Hypothetical result: ${money(pnl)}.`);
-  }
+  const quoteFor = (symbol: SymbolCode) => quotes.find((quote) => quote.symbol === symbol);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -75,90 +72,51 @@ export default function App() {
         <View style={styles.header}>
           <View style={styles.logo}><Text style={styles.logoText}>N</Text></View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.brand}>NOVA <Text style={styles.cyan}>TRADER AI</Text></Text>
-            <Text style={styles.muted}>Forex & gold market research</Text>
+            <Text style={styles.brand}>NOVA <Text style={styles.cyan}>MARKET AI</Text></Text>
+            <Text style={styles.muted}>Real market data · Research dashboard</Text>
           </View>
-          <View style={styles.demoBadge}><Text style={styles.demoText}>PAPER</Text></View>
+          <View style={styles.readOnlyBadge}><Text style={styles.readOnlyText}>READ ONLY</Text></View>
         </View>
 
-        <View style={styles.warning}>
-          <Text style={styles.warningTitle}>DEVELOPMENT MODE</Text>
-          <Text style={styles.warningText}>
-            No broker connection or live orders. Prices are placeholders and all positions are simulated.
+        <View style={styles.statusCard}>
+          <View style={styles.statusTop}>
+            <ActivityIndicator color={loading ? "#54D8E8" : "#91A9C2"} animating={loading} />
+            <Text style={styles.statusTitle}>{loading ? "CONNECTING TO MARKET DATA" : quotes.length ? "DATA RECEIVED" : "NOT CONNECTED"}</Text>
+          </View>
+          <Text style={styles.statusBody}>
+            {error || (quotes.length ? "Quotes below were returned by the configured data provider. Check each provider timestamp for freshness." : "No market prices are displayed until a genuine data connection succeeds.")}
+          </Text>
+          <TouchableOpacity style={styles.refreshButton} onPress={refresh} disabled={loading}>
+            <Text style={styles.refreshText}>{loading ? "FETCHING…" : "REFRESH REAL MARKET DATA"}</Text>
+          </TouchableOpacity>
+          {lastFetched ? <Text style={styles.fetched}>Received by NOVA: {formatTime(lastFetched)}</Text> : null}
+        </View>
+
+        <Text style={styles.sectionTitle}>WATCHLIST</Text>
+        {SYMBOLS.map((symbol) => {
+          const quote = quoteFor(symbol);
+          return (
+            <View key={symbol} style={styles.quoteCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.symbol}>{symbol}</Text>
+                <Text style={styles.instrumentType}>{symbol === "XAU/USD" ? "GOLD SPOT" : "FOREIGN EXCHANGE"}</Text>
+              </View>
+              <View style={styles.priceBlock}>
+                <Text style={styles.price}>{quote ? quote.price : "—"}</Text>
+                <Text style={styles.quoteState}>{quote ? quote.source : "No quote"}</Text>
+              </View>
+              <Text style={styles.timestamp}>Provider timestamp: {quote ? formatTime(quote.quote_time) : "Unavailable"}</Text>
+            </View>
+          );
+        })}
+
+        <View style={styles.infoCard}>
+          <Text style={styles.infoTitle}>ABOUT THIS VERSION</Text>
+          <Text style={styles.infoText}>
+            NOVA displays provider-supplied market information only. It does not create sample prices, estimate missing quotes, simulate accounts, or place orders. A blank quote means no verified data was received.
           </Text>
         </View>
-
-        <View style={styles.card}>
-          <Text style={styles.label}>VIRTUAL ACCOUNT BALANCE</Text>
-          <Text style={styles.balance}>{money(balance)}</Text>
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={styles.label}>OPEN POSITIONS</Text>
-              <Text style={styles.statValue}>{positions.length}</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.label}>CLOSED P/L</Text>
-              <Text style={[styles.statValue, closedPnl >= 0 ? styles.green : styles.red]}>
-                {money(closedPnl)}
-              </Text>
-            </View>
-          </View>
-          <Text style={styles.muted}>Unrealized paper P/L: {money(unrealized)}</Text>
-        </View>
-
-        <Text style={styles.sectionTitle}>MARKETS</Text>
-        <View style={styles.marketRow}>
-          {(["EUR/USD", "GBP/USD", "XAU/USD"] as Asset[]).map((item) => (
-            <TouchableOpacity
-              key={item}
-              onPress={() => setAsset(item)}
-              style={[styles.marketButton, asset === item && styles.marketSelected]}
-            >
-              <Text style={[styles.marketName, asset === item && styles.cyan]}>{item}</Text>
-              <Text style={styles.marketType}>{item === "XAU/USD" ? "GOLD" : "FOREX"}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.label}>SELECTED INSTRUMENT · PLACEHOLDER PRICE</Text>
-          <Text style={styles.instrument}>{asset}</Text>
-          <Text style={styles.quote}>{price(asset, prices[asset])}</Text>
-          <Text style={styles.muted}>Waiting for a verified read-only market-data source.</Text>
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.buyButton} onPress={() => openPaperPosition("BUY")}>
-              <Text style={styles.actionText}>PAPER BUY</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.sellButton} onPress={() => openPaperPosition("SELL")}>
-              <Text style={styles.actionText}>PAPER SELL</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>OPEN PAPER POSITIONS</Text>
-        <View style={styles.card}>
-          {positions.length === 0 ? (
-            <Text style={styles.muted}>No open positions. Choose an instrument and create a paper trade.</Text>
-          ) : (
-            positions.map((p) => (
-              <View key={p.id} style={styles.positionRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.positionTitle}>{p.asset} · {p.side}</Text>
-                  <Text style={styles.muted}>Entry {price(p.asset, p.entry)} · {p.units} units</Text>
-                </View>
-                <TouchableOpacity style={styles.closeButton} onPress={() => closePaperPosition(p)}>
-                  <Text style={styles.closeText}>CLOSE</Text>
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.label}>NOVA ACTIVITY</Text>
-          <Text style={styles.noticeText}>{notice}</Text>
-        </View>
-        <Text style={styles.footer}>NOVA v0.1 · Research and paper-trading prototype</Text>
+        <Text style={styles.footer}>NOVA · Real-data dashboard · No order execution</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -173,35 +131,25 @@ const styles = StyleSheet.create({
   brand: { color: "#F0F6FF", fontSize: 17, fontWeight: "900", letterSpacing: 1 },
   cyan: { color: "#54D8E8" },
   muted: { color: "#9BB0C8", fontSize: 12, lineHeight: 18 },
-  demoBadge: { borderWidth: 1, borderColor: "#3A8C78", backgroundColor: "#12352F", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6 },
-  demoText: { color: "#8DF0C8", fontSize: 10, fontWeight: "800" },
-  warning: { borderWidth: 1, borderColor: "#705B31", backgroundColor: "#2A2418", borderRadius: 13, padding: 13, marginBottom: 15 },
-  warningTitle: { color: "#F6D58D", fontSize: 11, fontWeight: "900", marginBottom: 4 },
-  warningText: { color: "#E8D7B1", fontSize: 12, lineHeight: 18 },
-  card: { backgroundColor: "#101E30", borderColor: "#233951", borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 14 },
-  label: { color: "#9BB0C8", fontSize: 10, fontWeight: "700", letterSpacing: 1 },
-  balance: { color: "#F0F6FF", fontSize: 30, fontWeight: "800", marginTop: 7, marginBottom: 15 },
-  statsRow: { flexDirection: "row", gap: 20, borderTopWidth: 1, borderTopColor: "#233951", paddingTop: 13, marginBottom: 9 },
-  stat: { flex: 1 },
-  statValue: { color: "#F0F6FF", fontSize: 18, fontWeight: "800", marginTop: 5 },
-  green: { color: "#51D6A2" },
-  red: { color: "#FF7185" },
-  sectionTitle: { color: "#9BB0C8", fontSize: 11, fontWeight: "800", letterSpacing: 1.2, marginTop: 9, marginBottom: 10 },
-  marketRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
-  marketButton: { flex: 1, padding: 11, borderRadius: 11, borderWidth: 1, borderColor: "#233951", backgroundColor: "#101E30" },
-  marketSelected: { borderColor: "#54D8E8", backgroundColor: "#112B3A" },
-  marketName: { color: "#F0F6FF", fontSize: 12, fontWeight: "800" },
-  marketType: { color: "#9BB0C8", fontSize: 9, marginTop: 5 },
-  instrument: { color: "#F0F6FF", fontSize: 17, fontWeight: "800", marginTop: 8 },
-  quote: { color: "#54D8E8", fontSize: 29, fontWeight: "800", marginVertical: 5 },
-  actionRow: { flexDirection: "row", gap: 10, marginTop: 15 },
-  buyButton: { flex: 1, backgroundColor: "#167A62", padding: 13, borderRadius: 10, alignItems: "center" },
-  sellButton: { flex: 1, backgroundColor: "#913B50", padding: 13, borderRadius: 10, alignItems: "center" },
-  actionText: { color: "#FFFFFF", fontWeight: "900", fontSize: 11 },
-  positionRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#233951" },
-  positionTitle: { color: "#F0F6FF", fontSize: 13, fontWeight: "800" },
-  closeButton: { borderWidth: 1, borderColor: "#8A4052", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
-  closeText: { color: "#FF9CAC", fontSize: 10, fontWeight: "800" },
-  noticeText: { color: "#D5E2F0", fontSize: 12, lineHeight: 19, marginTop: 7 },
-  footer: { color: "#71869E", fontSize: 10, textAlign: "center", marginTop: 7 },
+  readOnlyBadge: { borderWidth: 1, borderColor: "#3A8C78", backgroundColor: "#12352F", borderRadius: 20, paddingHorizontal: 9, paddingVertical: 6 },
+  readOnlyText: { color: "#8DF0C8", fontSize: 9, fontWeight: "900" },
+  statusCard: { borderWidth: 1, borderColor: "#2A4A63", backgroundColor: "#102237", borderRadius: 15, padding: 15, marginBottom: 20 },
+  statusTop: { flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 8 },
+  statusTitle: { color: "#DCEAF8", fontSize: 11, fontWeight: "900", letterSpacing: 1 },
+  statusBody: { color: "#AFC2D7", fontSize: 12, lineHeight: 19 },
+  refreshButton: { marginTop: 13, backgroundColor: "#1B6578", padding: 13, borderRadius: 10, alignItems: "center" },
+  refreshText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900", letterSpacing: 0.5 },
+  fetched: { color: "#849BB4", fontSize: 10, marginTop: 9 },
+  sectionTitle: { color: "#9BB0C8", fontSize: 11, fontWeight: "800", letterSpacing: 1.2, marginBottom: 10 },
+  quoteCard: { backgroundColor: "#101E30", borderColor: "#233951", borderWidth: 1, borderRadius: 14, padding: 15, marginBottom: 10, flexDirection: "row", flexWrap: "wrap", alignItems: "center" },
+  symbol: { color: "#F0F6FF", fontSize: 16, fontWeight: "900" },
+  instrumentType: { color: "#8299B3", fontSize: 9, marginTop: 4, letterSpacing: 0.7 },
+  priceBlock: { alignItems: "flex-end" },
+  price: { color: "#54D8E8", fontSize: 21, fontWeight: "900" },
+  quoteState: { color: "#91A9C2", fontSize: 9, marginTop: 3 },
+  timestamp: { width: "100%", color: "#8299B3", fontSize: 10, marginTop: 11 },
+  infoCard: { backgroundColor: "#101E30", borderColor: "#233951", borderWidth: 1, borderRadius: 14, padding: 15, marginTop: 8 },
+  infoTitle: { color: "#54D8E8", fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  infoText: { color: "#AFC2D7", fontSize: 12, lineHeight: 19, marginTop: 7 },
+  footer: { color: "#71869E", fontSize: 10, textAlign: "center", marginTop: 18 },
 });
