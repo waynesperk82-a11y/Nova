@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "NOVA Trader AI",
+    "slug": "nova-trader-ai",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "android": {
+      "package": "com.nova.traderai"
+    },
+    "splash": {
+      "backgroundColor": "#07111F"
+    }
+  }
+}
