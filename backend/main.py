@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -119,7 +119,7 @@ async def markets() -> dict[str, Any]:
 
 
 @app.post("/api/core/chat")
-async def chat(payload: ChatRequest, request: Request) -> dict[str, Any]:
+async def chat(payload: ChatRequest) -> dict[str, Any]:
     if not AI_API_KEY:
         raise HTTPException(
             status_code=503,
