@@ -1,15 +1,23 @@
 {
   "expo": {
-    "name": "NOVA Trader AI",
+    "name": "NOVA",
     "slug": "nova-trader-ai",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "platforms": ["android", "ios", "web"],
     "android": {
       "package": "com.nova.traderai"
     },
+    "ios": {
+      "bundleIdentifier": "com.nova.traderai",
+      "supportsTablet": true
+    },
     "splash": {
       "backgroundColor": "#07111F"
+    },
+    "web": {
+      "bundler": "metro"
     }
   }
 }
