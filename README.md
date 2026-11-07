@@ -32,6 +32,11 @@ This is an advisory prototype. It does not browse the web, connect to broker acc
 - `backend/tests/`: API contract tests.
 - `eas.json`: EAS build profiles for Android and iOS.
 - `.github/workflows/ci.yml`: TypeScript, web export, and backend test checks.
+- `docs/research/`: point-in-time product, security, and market research notes.
+
+## Research notes
+
+- [LhamaBot public-information review](docs/research/lhamabot-public-review.md) — evidence review, unverified performance/withdrawal claims, age-term note, and product-safety lessons for NOVA.
 
 ## Requirements
 
