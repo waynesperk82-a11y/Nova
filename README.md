@@ -27,7 +27,7 @@ NOVA adopts these safeguards:
 
 - `App.tsx`: Expo / React Native client.
 - `backend/main.py`: FastAPI service for AI chat and read-only market data.
-- `backend/vercel.json`: Vercel FastAPI function settings.
+- `vercel.json`: Vercel FastAPI function settings.
 - `backend/tests/`: API contract and safety checks.
 - `eas.json`: EAS build profiles for Android and iOS.
 - `.github/workflows/ci.yml`: TypeScript, web-export and backend-test checks.
