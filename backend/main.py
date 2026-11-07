@@ -1,3 +1,4 @@
+import math
 import os
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -62,6 +63,29 @@ async def health() -> dict[str, Any]:
     }
 
 
+@app.get("/api/core/status")
+async def core_status() -> dict[str, Any]:
+    return {
+        "status": "ready" if AI_API_KEY else "needs_configuration",
+        "configured": bool(AI_API_KEY),
+        "provider": "OpenAI-compatible API",
+        "model": AI_MODEL,
+        "mode": "advisory; no external actions",
+    }
+
+
+@app.get("/api/markets/status")
+async def market_status() -> dict[str, Any]:
+    configured = bool(TWELVE_DATA_API_KEY)
+    return {
+        "status": "connected" if configured else "needs_configuration",
+        "configured": configured,
+        "provider": "Twelve Data",
+        "symbols": list(SYMBOLS),
+        "mode": "read-only",
+    }
+
+
 @app.get("/api/markets")
 async def markets() -> dict[str, Any]:
     if not TWELVE_DATA_API_KEY:
@@ -91,6 +115,14 @@ async def markets() -> dict[str, Any]:
                 raw_price = payload.get("close") or payload.get("price")
                 if raw_price is None:
                     errors.append(f"{symbol}: provider did not return a price")
+                    continue
+                try:
+                    numeric_price = float(raw_price)
+                except (TypeError, ValueError):
+                    errors.append(f"{symbol}: provider returned an invalid price")
+                    continue
+                if numeric_price <= 0 or not math.isfinite(numeric_price):
+                    errors.append(f"{symbol}: provider returned an invalid price")
                     continue
 
                 quotes.append({
