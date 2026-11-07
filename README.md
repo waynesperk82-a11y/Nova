@@ -1,87 +1,112 @@
-# NOVA 2.0
+# NOVA 2.0 — Personal Intelligence Workspace
 
-Android-first personal intelligence workspace built with Expo / React Native and a FastAPI backend.
+NOVA is an Android-first, cross-platform AI workspace built with Expo / React Native and a FastAPI backend. The same interface code targets Android, iOS and the web. On Windows, macOS and Linux, the web app is the computer experience; this repository does not package native desktop binaries.
 
-## What is in this repository
+## Current app areas
 
-- **Home** — workspace overview and navigation.
-- **Intelligence** — conversational AI interface backed by a configurable OpenAI-compatible chat-completions API.
-- **Markets** — read-only EUR/USD, GBP/USD and XAU/USD quotes from Twelve Data.
-- **Workspace** — a lightweight local task list. Tasks currently live in app memory and are not synced or persisted to an account.
-- **Backend** — FastAPI service for AI chat and verified market-data requests.
+- **Home:** workspace overview and navigation.
+- **Intelligence:** conversational AI using a configurable OpenAI-compatible API.
+- **Markets:** read-only EUR/USD, GBP/USD and XAU/USD data from Twelve Data.
+- **Workspace:** local task list; tasks are currently held in app memory and are not synced to an account.
 
-## AI provider configuration
+NOVA is an advisory prototype. It does not browse the web, connect to broker accounts, place trades, or control physical equipment.
 
-The backend supports providers that expose an OpenAI-compatible `/chat/completions` endpoint. This lets the deployment choose a compatible provider/model without putting credentials in the mobile app.
+## LhamaBot product research and NOVA lessons
 
-Set these environment variables on the backend host:
+See [the LhamaBot public-information review](docs/research/lhamabot-public-review.md). It treats the platform's promotional performance claims as unverified and does not endorse the service.
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `NOVA_AI_API_KEY` | Yes for chat | Secret API key for the selected AI provider |
-| `NOVA_AI_BASE_URL` | No | API base URL; defaults to `https://api.openai.com/v1` |
-| `NOVA_AI_MODEL` | No | Model name; defaults to `gpt-4o-mini` |
-| `NOVA_CORS_ORIGINS` | No | Comma-separated browser origins; defaults to local Expo web origins |
-| `TWELVE_DATA_API_KEY` | Yes for markets | Twelve Data API key |
+NOVA adopts these safeguards:
+- Show the provider and source timestamp for every market quote; distinguish provider time from NOVA retrieval time.
+- Never invent missing prices or present unverified promotional performance as fact.
+- Keep market connections read-only. No broker order placement, withdrawal permissions, wallet signing or credential collection.
+- Keep API secrets server-side and use the least privilege available.
+- Require explicit human approval before any future consequential external action.
+- Make uncertainty and unavailable data visible rather than hiding them.
 
-Never put provider keys in `App.tsx`, Expo public variables, or GitHub. The app only needs the public backend URL:
+## Architecture
 
-`EXPO_PUBLIC_NOVA_API_URL=https://YOUR-BACKEND-HOST`
+- `App.tsx`: Expo / React Native client.
+- `backend/main.py`: FastAPI service for AI chat and read-only market data.
+- `backend/vercel.json`: Vercel FastAPI function settings.
+- `backend/tests/`: API contract and safety checks.
+- `eas.json`: EAS build profiles for Android and iOS.
+- `.github/workflows/ci.yml`: TypeScript, web-export and backend-test checks.
+- `docs/research/`: point-in-time product/security research.
 
-The app can use a different compatible AI provider by changing the backend environment variables; confirm that provider's endpoint, model name, account access and pricing before deployment.
+## Requirements
 
-## Local setup
+- Node.js 20 or newer and npm.
+- Python 3.11 or newer for backend development.
+- Expo Go for quick device preview, or EAS Build for installable Android/iOS builds.
+- A deployed HTTPS backend for real devices outside your local network.
 
-### Backend
+## Configure environment variables
+
+Set these on the backend host only:
+- `NOVA_AI_API_KEY`: private key for the selected AI provider.
+- `NOVA_AI_BASE_URL`: optional OpenAI-compatible API base URL.
+- `NOVA_AI_MODEL`: optional model name.
+- `NOVA_CORS_ORIGINS`: comma-separated trusted browser origins.
+- `TWELVE_DATA_API_KEY`: private market-data provider key.
+
+Set `EXPO_PUBLIC_NOVA_API_URL` in the Expo/EAS build environment to the HTTPS base URL of the deployed backend. This URL is public by design; never put a secret in an `EXPO_PUBLIC_*` variable.
+
+## Deploy backend to Vercel
+
+The connected Vercel project is named `nova-api` and uses FastAPI. Configure its root directory and environment variables in Vercel project settings. Deploy a Preview first and verify:
+- `GET /health`
+- `GET /api/core/status`
+- `POST /api/core/chat`
+- `GET /api/markets/status`
+- `GET /api/markets`
+
+Before unrestricted public use, add authentication, per-user authorization, request throttling, abuse protection, monitoring and audit logging. Restrict browser CORS to the intended web origins. A successful build alone does not prove provider credentials or runtime requests work.
+
+## Run the app
+
+```bash
+npm install
+npx expo start
+```
+
+Press `a` for Android (with Android tooling installed), `i` for the iOS Simulator on macOS, or `w` for web. To export the web app:
+
+```bash
+npm run export:web
+```
+
+## Build installable mobile apps
+
+Authenticate with your Expo account and use the EAS profiles:
+
+```bash
+npx eas-cli login
+npx eas-cli build --platform android --profile preview
+npx eas-cli build --platform ios --profile preview
+```
+
+The Android Preview profile produces an installable APK. The Production profile produces an Android App Bundle. iOS device distribution normally requires Apple signing credentials and an eligible Apple Developer account.
+
+## Run the backend locally
 
 ```bash
 cd backend
 python -m venv .venv
-# Activate the virtual environment
+# Activate the environment, then:
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-Set the backend environment variables in your local shell or deployment dashboard. Do not commit a real `.env` file.
+For a physical phone, use a reachable LAN address or deployed HTTPS URL; `localhost` on the phone does not point to your computer.
 
-### Android app
+## API endpoints
 
-```bash
-npm install
-```
+- `GET /health` — provider configuration status; no secrets returned.
+- `GET /api/core/status` — AI provider configuration status; no secrets returned.
+- `POST /api/core/chat` — bounded conversation history and a server-side AI request.
+- `GET /api/markets/status` — market-provider configuration status.
+- `GET /api/markets` — verified provider quotes or an explicit unavailable/error response.
 
-Set `EXPO_PUBLIC_NOVA_API_URL` in the Expo environment, then run:
+## Production-readiness limits
 
-```bash
-npx expo start
-```
-
-Open the project using Expo Go or a configured Android development build.
-
-## API
-
-- `GET /health` — reports whether AI and market provider keys are configured; never returns credentials.
-- `GET /api/markets` — returns provider-supplied quotes or an explicit error. No sample prices are generated.
-- `POST /api/core/chat` — accepts a message and up to 12 prior conversation turns; returns the AI provider's reply.
-
-Example chat request:
-
-```json
-{
-  "message": "Help me break my project into milestones.",
-  "history": []
-}
-```
-
-## Current limitations — stated clearly
-
-- There is no persistent user memory, login, cloud task sync, team workspace, or connected external-tool execution yet.
-- Conversation history is held in the running app session; it is not a cross-session memory store.
-- The AI endpoint is conversational. It does not autonomously execute actions in other services.
-- The markets feature is informational and read-only. There is no broker connection or order execution.
-- A configured Twelve Data account may have symbol, latency, quota and real-time entitlement limits. Displayed timestamps and provider entitlements determine freshness.
-- The repository update does not itself deploy the backend, provision API keys, or produce an installable Android APK.
-
-## Safety and data integrity
-
-NOVA should be transparent about uncertainty, avoid inventing data or completed actions, and require human approval for consequential external actions. Keep all API secrets on the server. Do not use this application to control weapons or dangerous physical equipment.
+Persistent memory, accounts, cloud task sync, shared workspaces and external tool execution are not implemented. The current chat is conversational only and does not claim to perform actions in other services. Do not expose paid AI calls publicly until authentication and abuse controls are in place.
