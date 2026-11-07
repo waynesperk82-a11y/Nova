@@ -11,9 +11,9 @@ NOVA is an Android-first, cross-platform AI workspace built with Expo / React Na
 
 NOVA is an advisory prototype. It does not browse the web, connect to broker accounts, place trades, or control physical equipment.
 
-## LhamaBot product research and NOVA lessons
+## Automation product research and NOVA lessons
 
-See [the LhamaBot public-information review](docs/research/lhamabot-public-review.md). It treats the platform's promotional performance claims as unverified and does not endorse the service.
+See [the LhamaBot public-information review](docs/research/automation-safety-lessons.md). It treats the platform's promotional performance claims as unverified and does not endorse the service.
 
 NOVA adopts these safeguards:
 - Show the provider and source timestamp for every market quote; distinguish provider time from NOVA retrieval time.
