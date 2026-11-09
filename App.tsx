@@ -5,12 +5,13 @@ import {
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 
-type Tab = "Home" | "Intelligence" | "Markets" | "Workspace";
+type Tab = "Home" | "Intelligence" | "Markets" | "Practice" | "Workspace";
 type SymbolCode = "EUR/USD" | "GBP/USD" | "XAU/USD";
 type Quote = { symbol: SymbolCode; price: string; quote_time: string | null; source: string; currency: string | null };
 type MarketResponse = { data: Quote[]; status: string; fetched_at: string; errors?: string[] };
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type Task = { id: number; title: string; done: boolean };
+type PracticeOrder = { id: number; symbol: SymbolCode; side: "BUY" | "SELL"; units: number; price: number; createdAt: string };
 
 const API_BASE = process.env.EXPO_PUBLIC_NOVA_API_URL?.replace(/\/$/, "");
 const SYMBOLS: SymbolCode[] = ["EUR/USD", "GBP/USD", "XAU/USD"];
@@ -46,6 +47,11 @@ export default function App() {
     { id: 2, title: "Review the project roadmap", done: false },
   ]);
   const [newTask, setNewTask] = useState("");
+  const [practiceSymbol, setPracticeSymbol] = useState<SymbolCode>("EUR/USD");
+  const [practiceSide, setPracticeSide] = useState<"BUY" | "SELL">("BUY");
+  const [practiceUnits, setPracticeUnits] = useState("1000");
+  const [practiceOrders, setPracticeOrders] = useState<PracticeOrder[]>([]);
+  const [practiceNotice, setPracticeNotice] = useState<string | null>(null);
 
   const refreshMarkets = useCallback(async () => {
     if (!API_BASE) { setMarketError("Backend URL is not configured. Set EXPO_PUBLIC_NOVA_API_URL in the Expo environment."); setQuotes([]); return; }
@@ -119,6 +125,40 @@ export default function App() {
     <Panel><Text style={styles.panelTitle}>Data integrity</Text><Text style={styles.body}>NOVA never invents missing prices, creates sample profit/loss or connects to a broker to place orders. Market information is not financial advice.</Text></Panel>
   </ScrollView>;
 
+  const logPracticeOrder = () => {
+    const quote = quoteFor(practiceSymbol);
+    const price = quote ? Number.parseFloat(quote.price.replace(/,/g, "")) : NaN;
+    const units = Number(practiceUnits);
+    if (!quote || !Number.isFinite(price) || price <= 0) { setPracticeNotice("A verified live quote is required before creating a practice order."); return; }
+    if (!Number.isFinite(units) || units <= 0 || units > 1000000) { setPracticeNotice("Enter a practice quantity between 1 and 1,000,000 units."); return; }
+    setPracticeOrders(current => [{ id: Date.now(), symbol: practiceSymbol, side: practiceSide, units, price, createdAt: new Date().toLocaleString() }, ...current].slice(0, 12));
+    setPracticeNotice("Practice order recorded locally. No broker was contacted and no real trade was placed.");
+  };
+
+  const renderPractice = () => {
+    const selectedQuote = quoteFor(practiceSymbol);
+    const selectedPrice = selectedQuote ? Number.parseFloat(selectedQuote.price.replace(/,/g, "")) : NaN;
+    const quantity = Number(practiceUnits);
+    const notional = Number.isFinite(selectedPrice) && Number.isFinite(quantity) ? selectedPrice * quantity : NaN;
+    return <ScrollView contentContainerStyle={styles.content}>
+      <Heading title="Trading practice" subtitle="A learning simulator · no real money or broker connection" />
+      <Panel style={styles.practiceBanner}><Text style={styles.eyebrow}>SAFE PRACTICE MODE</Text><Text style={styles.panelTitle}>Learn the order workflow</Text><Text style={styles.body}>This screen records simulated orders locally for learning. It cannot send orders, access funds, or connect to a broker.</Text><View style={styles.practiceLock}><Text style={styles.practiceLockText}>BROKER EXECUTION DISABLED</Text></View></Panel>
+      <Panel>
+        <Text style={styles.panelTitle}>Create a practice order</Text>
+        <Text style={styles.mutedSmall}>Instrument</Text>
+        <View style={styles.practiceChoices}>{SYMBOLS.map(symbol => <TouchableOpacity key={symbol} onPress={() => setPracticeSymbol(symbol)} style={[styles.practiceChoice, practiceSymbol === symbol && styles.practiceChoiceActive]}><Text style={[styles.practiceChoiceText, practiceSymbol === symbol && styles.practiceChoiceTextActive]}>{symbol}</Text></TouchableOpacity>)}</View>
+        <Text style={styles.mutedSmall}>Practice direction</Text>
+        <View style={styles.practiceChoices}><TouchableOpacity onPress={() => setPracticeSide("BUY")} style={[styles.practiceChoice, practiceSide === "BUY" && styles.practiceBuy]}><Text style={styles.practiceChoiceText}>BUY</Text></TouchableOpacity><TouchableOpacity onPress={() => setPracticeSide("SELL")} style={[styles.practiceChoice, practiceSide === "SELL" && styles.practiceSell]}><Text style={styles.practiceChoiceText}>SELL</Text></TouchableOpacity></View>
+        <Text style={styles.mutedSmall}>Quantity (units)</Text>
+        <TextInput value={practiceUnits} onChangeText={setPracticeUnits} keyboardType="numeric" placeholder="1000" placeholderTextColor={C.muted} style={styles.taskInput} />
+        <View style={styles.practiceEstimate}><Text style={styles.mutedSmall}>Latest provider quote</Text><Text style={styles.practicePrice}>{selectedQuote?.price ?? "Unavailable"}</Text><Text style={styles.mutedSmall}>Estimated notional: {Number.isFinite(notional) ? notional.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}</Text><Text style={styles.mutedSmall}>Source: {selectedQuote?.source ?? "No verified quote"}</Text></View>
+        <Button label="RECORD PRACTICE ORDER" onPress={logPracticeOrder} disabled={!selectedQuote || !Number.isFinite(notional) || quantity <= 0} />
+        {practiceNotice ? <Text style={styles.muted}>{practiceNotice}</Text> : null}
+      </Panel>
+      <Panel><Text style={styles.panelTitle}>Practice order history</Text>{practiceOrders.length === 0 ? <Text style={styles.muted}>No practice orders yet. Recorded examples will appear here.</Text> : practiceOrders.map(order => <View key={order.id} style={styles.practiceOrderRow}><View style={{ flex: 1 }}><Text style={styles.quoteSymbol}>{order.side} · {order.symbol}</Text><Text style={styles.mutedSmall}>{order.units.toLocaleString()} units at {order.price}</Text><Text style={styles.mutedSmall}>{order.createdAt}</Text></View><Text style={[styles.practiceSideTag, { color: order.side === "BUY" ? C.green : C.red }]}>SIMULATED</Text></View>)}</Panel>
+    </ScrollView>;
+  };
+
   const renderWorkspace = () => <ScrollView contentContainerStyle={styles.content}>
     <Heading title="Workspace" subtitle="Keep projects and next actions organized" />
     <Panel><Text style={styles.eyebrow}>TASK OVERVIEW</Text><Text style={styles.metricValue}>{completedTasks} of {tasks.length}</Text><Text style={styles.muted}>Tasks completed</Text><View style={styles.progressTrack}><View style={[styles.progressFill, { width: tasks.length ? `${completedTasks / tasks.length * 100}%` : "0%" }]} /></View></Panel>
@@ -128,8 +168,8 @@ export default function App() {
     <Panel><Text style={styles.panelTitle}>Project space</Text><Text style={styles.body}>This first workspace stores tasks locally in the running app. Cloud sync, accounts and shared projects are not enabled yet.</Text></Panel>
   </ScrollView>;
 
-  const screens: Record<Tab, () => React.ReactNode> = { Home: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Workspace: renderWorkspace };
-  return <SafeAreaView style={styles.safe}><Analytics /><StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View><View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Home", "Intelligence", "Markets", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={styles.navItem}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["⌂", "✳", "⌁", "▤"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
+  const screens: Record<Tab, () => React.ReactNode> = { Home: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Practice: renderPractice, Workspace: renderWorkspace };
+  return <SafeAreaView style={styles.safe}><Analytics /><StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View><View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Home", "Intelligence", "Markets", "Practice", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={styles.navItem}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["⌂", "✳", "⌁", "◉", "▤"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
@@ -152,5 +192,6 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }, statusTag: { fontSize: 9, fontWeight: "900" }, quoteCard: { gap: 10 }, quoteSymbol: { color: C.text, fontSize: 16, fontWeight: "900" }, quotePrice: { color: C.cyan, fontSize: 21, fontWeight: "900" },
   progressTrack: { height: 6, backgroundColor: "#253348", borderRadius: 5, overflow: "hidden", marginTop: 5 }, progressFill: { height: 6, backgroundColor: C.cyan, borderRadius: 5 }, taskRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 12 }, checkCircle: { width: 21, height: 21, borderRadius: 7, borderWidth: 1, borderColor: "#58708A", alignItems: "center", justifyContent: "center" }, checked: { backgroundColor: "#176579", borderColor: C.cyan }, checkText: { color: "#FFF", fontWeight: "900" }, taskText: { color: C.text, fontSize: 12, flex: 1 }, taskDone: { color: C.muted, textDecorationLine: "line-through" },
   addTaskRow: { flexDirection: "row", gap: 8 }, taskInput: { flex: 1, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 12, color: C.text, paddingHorizontal: 13, fontSize: 12 }, addButton: { width: 45, borderRadius: 12, backgroundColor: "#176579", alignItems: "center", justifyContent: "center" }, addText: { color: "#FFF", fontSize: 24, fontWeight: "700" },
+  practiceBanner: { backgroundColor: "#10283A", borderColor: "#245067" }, practiceLock: { alignSelf: "flex-start", borderWidth: 1, borderColor: "#8A6C38", backgroundColor: "#302719", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }, practiceLockText: { color: "#F0C77A", fontSize: 9, fontWeight: "900", letterSpacing: 0.7 }, practiceChoices: { flexDirection: "row", gap: 7, marginVertical: 5 }, practiceChoice: { flex: 1, padding: 10, borderWidth: 1, borderColor: C.line, borderRadius: 10, alignItems: "center", backgroundColor: C.panel2 }, practiceChoiceActive: { borderColor: C.cyan, backgroundColor: "#123449" }, practiceBuy: { borderColor: C.green, backgroundColor: "#14372F" }, practiceSell: { borderColor: C.red, backgroundColor: "#3A242B" }, practiceChoiceText: { color: C.muted, fontSize: 10, fontWeight: "900" }, practiceChoiceTextActive: { color: C.cyan }, practiceEstimate: { backgroundColor: "#0B1420", borderWidth: 1, borderColor: C.line, borderRadius: 12, padding: 12, gap: 4, marginTop: 5 }, practicePrice: { color: C.cyan, fontSize: 22, fontWeight: "900" }, practiceOrderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10, marginTop: 4 }, practiceSideTag: { fontSize: 9, fontWeight: "900" },
   nav: { height: 67, backgroundColor: "#0D1521", borderTopWidth: 1, borderTopColor: C.line, flexDirection: "row", alignItems: "center", justifyContent: "space-around" }, navItem: { flex: 1, alignItems: "center", gap: 3 }, navIcon: { color: C.muted, fontSize: 19 }, navLabel: { color: C.muted, fontSize: 9, fontWeight: "700" }, navActive: { color: C.cyan },
 });
