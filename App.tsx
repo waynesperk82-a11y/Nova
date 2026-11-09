@@ -64,6 +64,7 @@ export default function App() {
       const result = body as MarketResponse;
       if (!Array.isArray(result.data) || result.data.length === 0) throw new Error("No verified provider quotes were returned.");
       setQuotes(result.data); setMarketFetched(result.fetched_at || new Date().toISOString());
+      setMarketFeedState(result.status === "partial" ? "partial" : "live");
       if (result.status === "partial") setMarketError((result.errors || []).join(" · ") || "Some symbols were unavailable.");
     } catch (e) { setQuotes([]); setMarketFeedState("offline"); setMarketError(e instanceof Error ? e.message : "Could not connect to the market-data service."); }
     finally { setMarketLoading(false); }
