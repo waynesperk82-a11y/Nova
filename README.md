@@ -75,14 +75,29 @@ Press `a` for Android (with Android tooling installed), `i` for the iOS Simulato
 npm run export:web
 ```
 
+## Launch with Expo Go on Android
+
+1. Install Node.js 20+ on your computer.
+2. Download this repository and check out the `fix/nova-web-vercel-build` branch.
+3. Install dependencies and start Expo:
+
+```bash
+npm install
+npm run doctor
+npx expo start
+```
+
+4. Install Expo Go on your Android phone and scan the QR code while both devices are on the same Wi-Fi network.
+5. Ensure `EXPO_PUBLIC_NOVA_API_URL` is set to the deployed HTTPS backend URL before starting Expo. For a local .env file, use the public URL only; never put API keys in Expo variables.
+
 ## Build installable mobile apps
 
 Authenticate with your Expo account and use the EAS profiles:
 
 ```bash
 npx eas-cli login
-npx eas-cli build --platform android --profile preview
-npx eas-cli build --platform ios --profile preview
+npm run android:preview
+npm run ios:preview
 ```
 
 The Android Preview profile produces an installable APK. The Production profile produces an Android App Bundle. iOS device distribution normally requires Apple signing credentials and an eligible Apple Developer account.
