@@ -5,7 +5,7 @@ import {
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 
-type Tab = "Home" | "Intelligence" | "Markets" | "Practice" | "Workspace";
+type Tab = "Home" | "Intelligence" | "Markets" | "Connections" | "Practice" | "Workspace";
 type SymbolCode = "EUR/USD" | "GBP/USD" | "XAU/USD";
 type Quote = { symbol: SymbolCode; price: string; quote_time: string | null; source: string; currency: string | null };
 type MarketResponse = { data: Quote[]; status: string; fetched_at: string; errors?: string[] };
@@ -38,6 +38,7 @@ export default function App() {
   const [marketLoading, setMarketLoading] = useState(false);
   const [marketError, setMarketError] = useState<string | null>(null);
   const [marketFetched, setMarketFetched] = useState<string | null>(null);
+  const [marketFeedState, setMarketFeedState] = useState<"loading" | "live" | "partial" | "offline">("loading");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -54,8 +55,8 @@ export default function App() {
   const [practiceNotice, setPracticeNotice] = useState<string | null>(null);
 
   const refreshMarkets = useCallback(async () => {
-    if (!API_BASE) { setMarketError("Backend URL is not configured. Set EXPO_PUBLIC_NOVA_API_URL in the Expo environment."); setQuotes([]); return; }
-    setMarketLoading(true); setMarketError(null);
+    if (!API_BASE) { setMarketError("Backend URL is not configured. Set EXPO_PUBLIC_NOVA_API_URL in the Expo environment."); setQuotes([]); setMarketFeedState("offline"); return; }
+    setMarketLoading(true); setMarketError(null); setMarketFeedState("loading");
     try {
       const response = await fetch(`${API_BASE}/api/markets`);
       const body = await response.json();
@@ -64,7 +65,7 @@ export default function App() {
       if (!Array.isArray(result.data) || result.data.length === 0) throw new Error("No verified provider quotes were returned.");
       setQuotes(result.data); setMarketFetched(result.fetched_at || new Date().toISOString());
       if (result.status === "partial") setMarketError((result.errors || []).join(" · ") || "Some symbols were unavailable.");
-    } catch (e) { setQuotes([]); setMarketError(e instanceof Error ? e.message : "Could not connect to the market-data service."); }
+    } catch (e) { setQuotes([]); setMarketFeedState("offline"); setMarketError(e instanceof Error ? e.message : "Could not connect to the market-data service."); }
     finally { setMarketLoading(false); }
   }, []);
 
@@ -100,7 +101,7 @@ export default function App() {
   const renderHome = () => <ScrollView contentContainerStyle={styles.content}>
     <View style={styles.hero}><View style={styles.brandMark}><Text style={styles.brandMarkText}>N</Text></View><View style={{ flex: 1 }}><Text style={styles.brand}>NOVA <Text style={styles.cyan}>2.0</Text></Text><Text style={styles.muted}>Your personal intelligence workspace</Text></View><View style={styles.livePill}><View style={styles.dot} /><Text style={styles.liveText}>NOVA 2.0</Text></View></View>
     <View style={styles.welcome}><Text style={styles.eyebrow}>THINK CLEARER. BUILD FASTER.</Text><Text style={styles.welcomeTitle}>What are we working on?</Text><Text style={styles.muted}>Research, plan, analyze and organize your next steps from one workspace.</Text><Button label="OPEN INTELLIGENCE  →" onPress={() => setTab("Intelligence")} /></View>
-    <View style={styles.metrics}><Panel style={styles.metric}><Text style={styles.metricLabel}>WORKSPACE TASKS</Text><Text style={styles.metricValue}>{completedTasks}/{tasks.length}</Text><Text style={styles.metricFoot}>Completed</Text></Panel><Panel style={styles.metric}><Text style={styles.metricLabel}>MARKET FEED</Text><Text style={[styles.metricValue, { color: quotes.length ? C.green : C.muted }]}>{quotes.length ? "LIVE DATA" : "OFFLINE"}</Text><Text style={styles.metricFoot}>Provider dependent</Text></Panel></View>
+    <View style={styles.metrics}><Panel style={styles.metric}><Text style={styles.metricLabel}>WORKSPACE TASKS</Text><Text style={styles.metricValue}>{completedTasks}/{tasks.length}</Text><Text style={styles.metricFoot}>Completed</Text></Panel><Panel style={styles.metric}><Text style={styles.metricLabel}>MARKET FEED</Text><Text style={[styles.metricValue, { color: quotes.length ? C.green : C.muted }]}>{marketFeedState === "live" ? "LIVE DATA" : marketFeedState === "partial" ? "PARTIAL" : marketFeedState === "loading" ? "CHECKING" : "OFFLINE"}</Text><Text style={styles.metricFoot}>Provider dependent</Text></Panel></View>
     <Text style={styles.sectionTitle}>QUICK ACCESS</Text>
     <View style={styles.quickGrid}>{(["Intelligence", "Markets", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} style={styles.quickCard} onPress={() => setTab(item)}><Text style={styles.quickIcon}>{["✳", "⌁", "▤"][i]}</Text><Text style={styles.quickTitle}>{item}</Text><Text style={styles.mutedSmall}>{["Ask and explore", "Read-only quotes", "Projects and tasks"][i]}</Text></TouchableOpacity>)}</View>
     <Panel><Text style={styles.panelTitle}>NOVA operating principles</Text><Text style={styles.body}>Clear answers · Transparent data · Human approval for important actions. NOVA does not execute trades or control physical equipment.</Text></Panel>
@@ -119,10 +120,43 @@ export default function App() {
 
   const renderMarkets = () => <ScrollView contentContainerStyle={styles.content}>
     <Heading title="Markets" subtitle="Provider-supplied information · Read only" />
-    <Panel><View style={styles.rowBetween}><Text style={styles.panelTitle}>Market data connection</Text><Text style={[styles.statusTag, { color: quotes.length ? C.green : C.red }]}>{quotes.length ? "● CONNECTED" : "● UNAVAILABLE"}</Text></View><Text style={styles.body}>{marketError || "Values below are returned by Twelve Data. Check provider timestamps for freshness."}</Text><Button label={marketLoading ? "REFRESHING…" : "REFRESH REAL MARKET DATA"} onPress={refreshMarkets} disabled={marketLoading} /><Text style={styles.mutedSmall}>Received by NOVA: {timeLabel(marketFetched)}</Text></Panel>
+    <Panel><View style={styles.rowBetween}><Text style={styles.panelTitle}>Market data connection</Text><Text style={[styles.statusTag, { color: marketFeedState === "live" ? C.green : marketFeedState === "partial" ? "#E8BD70" : C.red }]}>{marketFeedState === "live" ? "● LIVE" : marketFeedState === "partial" ? "● PARTIAL" : marketFeedState === "loading" ? "● CHECKING" : "● OFFLINE"}</Text></View><Text style={styles.body}>{marketError || "Values below are returned by Twelve Data. Check provider timestamps for freshness."}</Text><Button label={marketLoading ? "REFRESHING…" : "REFRESH REAL MARKET DATA"} onPress={refreshMarkets} disabled={marketLoading} /><Text style={styles.mutedSmall}>Received by NOVA: {timeLabel(marketFetched)}</Text></Panel>
     <Text style={styles.sectionTitle}>WATCHLIST</Text>
     {SYMBOLS.map(symbol => { const q = quoteFor(symbol); return <Panel key={symbol} style={styles.quoteCard}><View style={styles.rowBetween}><View><Text style={styles.quoteSymbol}>{symbol}</Text><Text style={styles.mutedSmall}>{symbol === "XAU/USD" ? "GOLD SPOT" : "FOREIGN EXCHANGE"}</Text></View><View style={{ alignItems: "flex-end" }}><Text style={styles.quotePrice}>{q?.price ?? "—"}</Text><Text style={styles.mutedSmall}>{q?.source ?? "No verified quote"}</Text></View></View><Text style={styles.mutedSmall}>Provider timestamp: {timeLabel(q?.quote_time)}</Text></Panel>; })}
     <Panel><Text style={styles.panelTitle}>Data integrity</Text><Text style={styles.body}>NOVA never invents missing prices, creates sample profit/loss or connects to a broker to place orders. Market information is not financial advice.</Text></Panel>
+  </ScrollView>;
+
+  const renderConnections = () => <ScrollView contentContainerStyle={styles.content}>
+    <Heading title="Connections" subtitle="Manage NOVA's service status and safe integrations" />
+    <Panel style={styles.practiceBanner}>
+      <Text style={styles.eyebrow}>CONNECTION CENTER</Text>
+      <Text style={styles.panelTitle}>Your services, clearly separated</Text>
+      <Text style={styles.body}>NOVA shows which services are configured, what data they provide and what permissions they have. Never paste API keys or passwords into chat or the app UI.</Text>
+    </Panel>
+    <Panel>
+      <View style={styles.rowBetween}><Text style={styles.panelTitle}>Market data · Twelve Data</Text><Text style={[styles.statusTag,{color:marketFeedState==="live"?C.green:marketFeedState==="partial"?"#E8BD70":C.red}]}>{marketFeedState.toUpperCase()}</Text></View>
+      <Text style={styles.body}>Read-only quotes for the NOVA watchlist. Market data access is separate from any broker account.</Text>
+      <Text style={styles.mutedSmall}>Last successful fetch: {timeLabel(marketFetched)}</Text>
+      <Button label="OPEN MARKETS" onPress={()=>setTab("Markets")} />
+    </Panel>
+    <Panel>
+      <View style={styles.rowBetween}><Text style={styles.panelTitle}>AI provider</Text><Text style={[styles.statusTag,{color:C.cyan}]}>BACKEND CONFIG</Text></View>
+      <Text style={styles.body}>NOVA's AI requests are routed through the protected backend. Provider credentials must remain server-side and must never be stored in the mobile app.</Text>
+    </Panel>
+    <Panel>
+      <View style={styles.rowBetween}><Text style={styles.panelTitle}>Broker sandbox adapter</Text><Text style={[styles.statusTag,{color:"#E8BD70"}]}>NOT CONNECTED</Text></View>
+      <Text style={styles.body}>Broker integrations are not implemented in this build. A future provider adapter can be developed against a sandbox/demo environment for learning and testing only.</Text>
+      <View style={styles.practiceLock}><Text style={styles.practiceLockText}>LIVE ORDER ROUTING DISABLED</Text></View>
+      <Text style={styles.mutedSmall}>No broker credentials are collected, no account is linked and no orders or money movements can be sent.</Text>
+    </Panel>
+    <Panel>
+      <Text style={styles.panelTitle}>Connection safety checklist</Text>
+      <Text style={styles.body}>• Verify provider identity and API permissions</Text>
+      <Text style={styles.body}>• Keep secrets in server-side environment variables</Text>
+      <Text style={styles.body}>• Use sandbox credentials and simulated balances</Text>
+      <Text style={styles.body}>• Log and review every test request</Text>
+      <Text style={styles.body}>• Never label a service connected until a real health check confirms it</Text>
+    </Panel>
   </ScrollView>;
 
   const logPracticeOrder = () => {
@@ -168,8 +202,8 @@ export default function App() {
     <Panel><Text style={styles.panelTitle}>Project space</Text><Text style={styles.body}>This first workspace stores tasks locally in the running app. Cloud sync, accounts and shared projects are not enabled yet.</Text></Panel>
   </ScrollView>;
 
-  const screens: Record<Tab, () => React.ReactNode> = { Home: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Practice: renderPractice, Workspace: renderWorkspace };
-  return <SafeAreaView style={styles.safe}><Analytics /><StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View><View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Home", "Intelligence", "Markets", "Practice", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={styles.navItem}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["⌂", "✳", "⌁", "◉", "▤"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
+  const screens: Record<Tab, () => React.ReactNode> = { Home: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Connections: renderConnections, Practice: renderPractice, Workspace: renderWorkspace };
+  return <SafeAreaView style={styles.safe}><Analytics /><StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View><View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Home", "Intelligence", "Markets", "Connections", "Practice", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={styles.navItem}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["⌂", "✳", "⌁", "⌘", "◉", "▤"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
