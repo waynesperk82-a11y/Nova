@@ -12,12 +12,18 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_NOVA_API_URL": "https://nova-api-azure.vercel.app"
       }
     },
     "production": {
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_NOVA_API_URL": "https://nova-api-azure.vercel.app"
       }
     }
   }
