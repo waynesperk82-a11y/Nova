@@ -75,20 +75,32 @@ Press `a` for Android (with Android tooling installed), `i` for the iOS Simulato
 npm run export:web
 ```
 
-## Launch with Expo Go on Android
+## Launch from an Android phone (no local computer)
 
-1. Install Node.js 20+ on your computer.
-2. Download this repository and check out the `fix/nova-web-vercel-build` branch.
-3. Install dependencies and start Expo:
+Use GitHub Codespaces as the cloud terminal, then let EAS Build compile the Android APK in Expo's cloud.
+
+1. Sign in to GitHub and open [the NOVA repository](https://github.com/waynesperk82-a11y/Nova).
+2. Select the `fix/nova-web-vercel-build` branch, then open **Code → Codespaces → Create codespace on fix/nova-web-vercel-build**.
+3. In the Codespaces terminal run:
 
 ```bash
 npm install
 npm run doctor
-npx expo start
+npx eas-cli login
+npx eas-cli init
 ```
 
-4. Install Expo Go on your Android phone and scan the QR code while both devices are on the same Wi-Fi network.
-5. Ensure `EXPO_PUBLIC_NOVA_API_URL` is set to the deployed HTTPS backend URL before starting Expo. For a local .env file, use the public URL only; never put API keys in Expo variables.
+4. During `eas init`, create or link the NOVA project under your own Expo account. This writes the required EAS project ID into the Expo app configuration. Keep the existing app slug and Android package name.
+5. Build an installable preview APK:
+
+```bash
+npm run android:preview
+```
+
+6. When EAS finishes, open the build page on your phone and install the APK. Android may ask you to allow installation from the browser.
+7. The preview and production EAS profiles set the public NOVA backend URL. Provider secrets remain on the backend and must never be placed in Expo public variables.
+
+Expo Go is optional for quick development previews; the EAS APK is the recommended phone-only launch route.
 
 ## Build installable mobile apps
 
