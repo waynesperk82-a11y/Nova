@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -128,7 +129,7 @@ export default function App() {
   </ScrollView>;
 
   const screens: Record<Tab, () => React.ReactNode> = { Home: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Workspace: renderWorkspace };
-  return <SafeAreaView style={styles.safe}><StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View><View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Home", "Intelligence", "Markets", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={styles.navItem}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["⌂", "✳", "⌁", "▤"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
+  return <SafeAreaView style={styles.safe}><Analytics /><StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View><View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Home", "Intelligence", "Markets", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={styles.navItem}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["⌂", "✳", "⌁", "▤"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
