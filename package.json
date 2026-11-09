@@ -9,7 +9,11 @@
     "web": "expo start --web",
     "check": "tsc --noEmit",
     "export:web": "expo export --platform web",
-    "test:backend": "python -m pytest backend/tests -q"
+    "test:backend": "python -m pytest backend/tests -q",
+    "doctor": "npx expo-doctor",
+    "android:preview": "npx eas-cli build --platform android --profile preview",
+    "android:production": "npx eas-cli build --platform android --profile production",
+    "ios:preview": "npx eas-cli build --platform ios --profile preview"
   },
   "dependencies": {
     "expo": "~54.0.0",
