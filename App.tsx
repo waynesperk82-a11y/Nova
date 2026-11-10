@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import {
-  ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
+  ActivityIndicator, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 
@@ -15,7 +15,7 @@ type PracticeOrder = { id: number; symbol: SymbolCode; side: "BUY" | "SELL"; uni
 
 const API_BASE = process.env.EXPO_PUBLIC_NOVA_API_URL?.replace(/\/$/, "");
 const SYMBOLS: SymbolCode[] = ["EUR/USD", "GBP/USD", "XAU/USD"];
-const C = { bg: "#080D16", panel: "#111A28", panel2: "#152235", line: "#26364B", text: "#F2F6FC", muted: "#91A2B8", cyan: "#57DCEB", green: "#72D6B0", red: "#F18D91" };
+const C = { bg: "#070A14", panel: "#101827", panel2: "#151F33", line: "#26334D", text: "#F4F7FF", muted: "#91A0B9", cyan: "#59E1F2", violet: "#9A7CFF", green: "#72D6B0", red: "#F18D91" };
 
 function timeLabel(value?: string | null) {
   if (!value) return "Provider timestamp unavailable";
@@ -100,11 +100,11 @@ export default function App() {
   };
 
   const renderHome = () => <ScrollView contentContainerStyle={styles.content}>
-    <View style={styles.hero}><View style={styles.brandMark}><Text style={styles.brandMarkText}>N</Text></View><View style={{ flex: 1 }}><Text style={styles.brand}>NOVA <Text style={styles.cyan}>2.0</Text></Text><Text style={styles.muted}>Your personal intelligence workspace</Text></View><View style={styles.livePill}><View style={styles.dot} /><Text style={styles.liveText}>NOVA 2.0</Text></View></View>
-    <View style={styles.welcome}><Text style={styles.eyebrow}>THINK CLEARER. BUILD FASTER.</Text><Text style={styles.welcomeTitle}>What are we working on?</Text><Text style={styles.muted}>Research, plan, analyze and organize your next steps from one workspace.</Text><Button label="OPEN INTELLIGENCE  →" onPress={() => setTab("Intelligence")} /></View>
+    <View style={styles.hero}><Image source={require("./assets/nova-icon.png")} style={styles.logoImage} /><View style={{ flex: 1 }}><Text style={styles.brand}>NOVA <Text style={styles.cyan}>2.0</Text></Text><Text style={styles.muted}>Your personal intelligence workspace</Text></View><View style={styles.livePill}><View style={styles.dot} /><Text style={styles.liveText}>NOVA 2.0</Text></View></View>
+    <View style={styles.welcome}><Text style={styles.eyebrow}>THINK CLEARER · BUILD FASTER</Text><Text style={styles.welcomeTitle}>Your next big idea starts here.</Text><Text style={styles.muted}>A smarter space to research, reason, explore markets and turn ambitious ideas into clear next steps.</Text><Button label="OPEN INTELLIGENCE  →" onPress={() => setTab("Intelligence")} /></View>
     <View style={styles.metrics}><Panel style={styles.metric}><Text style={styles.metricLabel}>WORKSPACE TASKS</Text><Text style={styles.metricValue}>{completedTasks}/{tasks.length}</Text><Text style={styles.metricFoot}>Completed</Text></Panel><Panel style={styles.metric}><Text style={styles.metricLabel}>MARKET FEED</Text><Text style={[styles.metricValue, { color: quotes.length ? C.green : C.muted }]}>{marketFeedState === "live" ? "LIVE DATA" : marketFeedState === "partial" ? "PARTIAL" : marketFeedState === "loading" ? "CHECKING" : "OFFLINE"}</Text><Text style={styles.metricFoot}>Provider dependent</Text></Panel></View>
     <Text style={styles.sectionTitle}>QUICK ACCESS</Text>
-    <View style={styles.quickGrid}>{(["Intelligence", "Markets", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} style={styles.quickCard} onPress={() => setTab(item)}><Text style={styles.quickIcon}>{["✳", "⌁", "▤"][i]}</Text><Text style={styles.quickTitle}>{item}</Text><Text style={styles.mutedSmall}>{["Ask and explore", "Read-only quotes", "Projects and tasks"][i]}</Text></TouchableOpacity>)}</View>
+    <View style={styles.quickGrid}>{(["Intelligence", "Markets", "Workspace", "Connections"] as Tab[]).map((item, i) => <TouchableOpacity key={item} style={styles.quickCard} onPress={() => setTab(item)}><Text style={styles.quickIcon}>{["✳", "⌁", "▤", "⌘"][i]}</Text><Text style={styles.quickTitle}>{item}</Text><Text style={styles.mutedSmall}>{["Ask and explore", "Read-only quotes", "Projects and tasks", "Link services"][i]}</Text></TouchableOpacity>)}</View>
     <Panel><Text style={styles.panelTitle}>NOVA operating principles</Text><Text style={styles.body}>Clear answers · Transparent data · Human approval for important actions. NOVA does not execute trades or control physical equipment.</Text></Panel>
   </ScrollView>;
 
@@ -204,22 +204,22 @@ export default function App() {
   </ScrollView>;
 
   const screens: Record<Tab, () => React.ReactNode> = { Home: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Connections: renderConnections, Practice: renderPractice, Workspace: renderWorkspace };
-  return <SafeAreaView style={styles.safe}>{Platform.OS === "web" ? <Analytics /> : null}<StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View><View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Home", "Intelligence", "Markets", "Connections", "Practice", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={styles.navItem}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["⌂", "✳", "⌁", "⌘", "◉", "▤"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
+  return <SafeAreaView style={styles.safe}>{Platform.OS === "web" ? <Analytics /> : null}<StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><View style={styles.topBrandRow}><Image source={require("./assets/nova-icon.png")} style={styles.topLogo} /><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text></View><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View><View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Home", "Intelligence", "Markets", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={styles.navItem}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["⌂", "✳", "⌁", "▤"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
-  topBar: { height: 54, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#1B293B" },
+  topBar: { height: 58, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#1B293B", backgroundColor: "#090F1B" }, topBrandRow: { flexDirection: "row", alignItems: "center", gap: 8 }, topLogo: { width: 27, height: 27, borderRadius: 8 }, logoImage: { width: 52, height: 52, borderRadius: 16, borderWidth: 1, borderColor: "#31517A" },
   topBrand: { color: C.text, fontSize: 19, fontWeight: "900", letterSpacing: 2 }, topMeta: { color: C.muted, fontSize: 9, letterSpacing: 1.2, fontWeight: "700" },
   content: { padding: 18, paddingBottom: 28, gap: 14 },
-  hero: { flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 5 },
+  hero: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 7, paddingVertical: 5 },
   brandMark: { width: 42, height: 42, borderRadius: 13, backgroundColor: C.cyan, alignItems: "center", justifyContent: "center" }, brandMarkText: { color: C.bg, fontWeight: "900", fontSize: 25 },
-  brand: { color: C.text, fontSize: 18, fontWeight: "900", letterSpacing: 1.5 }, cyan: { color: C.cyan },
+  brand: { color: C.text, fontSize: 19, fontWeight: "900", letterSpacing: 1.7 }, cyan: { color: C.cyan },
   livePill: { borderWidth: 1, borderColor: "#285747", borderRadius: 20, paddingHorizontal: 9, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 5 }, dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.green }, liveText: { color: C.green, fontSize: 8, fontWeight: "900" },
-  welcome: { backgroundColor: "#10283A", borderColor: "#245067", borderWidth: 1, borderRadius: 20, padding: 19, gap: 11, marginBottom: 3 }, eyebrow: { color: C.cyan, fontSize: 9, fontWeight: "900", letterSpacing: 1.5 }, welcomeTitle: { color: C.text, fontSize: 25, fontWeight: "800", lineHeight: 31 },
+  welcome: { backgroundColor: "#102238", borderColor: "#31517A", borderWidth: 1, borderRadius: 22, padding: 21, gap: 12, marginBottom: 4, shadowColor: "#4A76FF", shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 5 }, eyebrow: { color: C.cyan, fontSize: 9, fontWeight: "900", letterSpacing: 1.5 }, welcomeTitle: { color: C.text, fontSize: 25, fontWeight: "800", lineHeight: 31 },
   muted: { color: C.muted, fontSize: 12, lineHeight: 19 }, mutedSmall: { color: C.muted, fontSize: 10, lineHeight: 16 },
   button: { backgroundColor: "#176579", borderRadius: 11, paddingVertical: 13, paddingHorizontal: 14, alignItems: "center", marginTop: 8 }, buttonSecondary: { backgroundColor: C.panel2 }, buttonText: { color: "#FFFFFF", fontWeight: "900", fontSize: 10, letterSpacing: 0.6 },
-  metrics: { flexDirection: "row", gap: 10 }, metric: { flex: 1 }, panel: { backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 15, padding: 15, gap: 8 }, metricLabel: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.8 }, metricValue: { color: C.text, fontSize: 23, fontWeight: "900" }, metricFoot: { color: C.muted, fontSize: 10 },
+  metrics: { flexDirection: "row", gap: 10 }, metric: { flex: 1 }, panel: { backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 17, padding: 16, gap: 9 }, metricLabel: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.8 }, metricValue: { color: C.text, fontSize: 23, fontWeight: "900" }, metricFoot: { color: C.muted, fontSize: 10 },
   sectionTitle: { color: C.muted, fontSize: 10, fontWeight: "900", letterSpacing: 1.4, marginTop: 5 }, quickGrid: { flexDirection: "row", gap: 8 }, quickCard: { flex: 1, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel, gap: 5 }, quickIcon: { color: C.cyan, fontSize: 19 }, quickTitle: { color: C.text, fontSize: 11, fontWeight: "800" },
   panelTitle: { color: C.text, fontSize: 14, fontWeight: "800" }, body: { color: "#B2C0D1", fontSize: 12, lineHeight: 19 }, heading: { gap: 4, marginBottom: 3 }, pageTitle: { color: C.text, fontSize: 26, fontWeight: "900" },
   emptyChat: { alignItems: "center", paddingVertical: 28, marginTop: 12 }, emptyIcon: { color: C.cyan, fontSize: 30, marginBottom: 6 }, message: { padding: 13, borderRadius: 14, borderWidth: 1, gap: 6 }, userMessage: { backgroundColor: "#123449", borderColor: "#28617A", marginLeft: 30 }, aiMessage: { backgroundColor: C.panel, borderColor: C.line, marginRight: 18 }, messageRole: { color: C.cyan, fontSize: 9, fontWeight: "900", letterSpacing: 1 },

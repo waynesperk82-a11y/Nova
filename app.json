@@ -6,7 +6,11 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
-      "package": "com.nova.traderai"
+      "package": "com.nova.traderai",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/nova-icon.png",
+        "backgroundColor": "#070A14"
+      }
     },
     "splash": {
       "backgroundColor": "#07111F"
@@ -15,6 +19,7 @@
       "eas": {
         "projectId": "d278f04e-7398-4ee0-b5a2-e214fd2b9f48"
       }
-    }
+    },
+    "icon": "./assets/nova-icon.png"
   }
 }
