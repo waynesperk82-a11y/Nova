@@ -1,3 +1,4 @@
+import asyncio
 import math
 import os
 from datetime import datetime, timezone
@@ -166,19 +167,26 @@ async def chat(payload: ChatRequest) -> dict[str, Any]:
 
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(45.0, connect=10.0)) as client:
-            response = await client.post(
-                f"{AI_BASE_URL}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {AI_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": AI_MODEL,
-                    "messages": messages,
-                    "temperature": 0.4,
-                },
-            )
-            response.raise_for_status()
+            # Gemini can briefly return HTTP 503 while capacity is recovering.
+            # Retry transient overloads twice; do not retry authentication or request errors.
+            for attempt in range(3):
+                response = await client.post(
+                    f"{AI_BASE_URL}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {AI_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": AI_MODEL,
+                        "messages": messages,
+                        "temperature": 0.4,
+                    },
+                )
+                if response.status_code == 503 and attempt < 2:
+                    await asyncio.sleep(attempt + 1)
+                    continue
+                response.raise_for_status()
+                break
             result = response.json()
             reply = result["choices"][0]["message"]["content"]
             if isinstance(reply, list):
@@ -200,6 +208,8 @@ async def chat(payload: ChatRequest) -> dict[str, Any]:
             raise HTTPException(status_code=502, detail="The AI provider rejected the server credentials.")
         if status == 429:
             raise HTTPException(status_code=503, detail="The AI provider is rate-limiting requests. Try again shortly.")
+        if status == 503:
+            raise HTTPException(status_code=503, detail="Gemini is temporarily busy. NOVA retried the request; please try again shortly.")
         raise HTTPException(status_code=502, detail=f"The AI provider returned HTTP {status}.")
     except (httpx.HTTPError, KeyError, IndexError, ValueError):
         raise HTTPException(status_code=502, detail="NOVA could not read a valid response from its AI provider.")
