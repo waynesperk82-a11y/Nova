@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "NOVA Trader AI",
-    "slug": "nova-trader-ai",
+    "slug": "nova",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
