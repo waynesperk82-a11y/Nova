@@ -5,7 +5,7 @@ import {
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 
-type Tab = "Home" | "Intelligence" | "Markets" | "Connections" | "Practice" | "Workspace";
+type Tab = "Home" | "Intelligence" | "Markets" | "Connections" | "Practice" | "Workspace" | "More";
 type SymbolCode = "EUR/USD" | "GBP/USD" | "XAU/USD";
 type Quote = { symbol: SymbolCode; price: string; quote_time: string | null; source: string; currency: string | null };
 type MarketResponse = { data: Quote[]; status: string; fetched_at: string; errors?: string[] };
@@ -15,7 +15,7 @@ type PracticeOrder = { id: number; symbol: SymbolCode; side: "BUY" | "SELL"; uni
 
 const API_BASE = process.env.EXPO_PUBLIC_NOVA_API_URL?.replace(/\/$/, "");
 const SYMBOLS: SymbolCode[] = ["EUR/USD", "GBP/USD", "XAU/USD"];
-const C = { bg: "#070A14", panel: "#101827", panel2: "#151F33", line: "#26334D", text: "#F4F7FF", muted: "#91A0B9", cyan: "#59E1F2", violet: "#9A7CFF", green: "#72D6B0", red: "#F18D91" };
+const C = { bg: "#050A12", panel: "#0C1723", panel2: "#112333", line: "#1C3545", text: "#F2FAFF", muted: "#8198A8", cyan: "#48E5D0", violet: "#A879FF", green: "#65E7B1", red: "#FF7D91", pink: "#F36CB7" };
 
 function timeLabel(value?: string | null) {
   if (!value) return "Provider timestamp unavailable";
@@ -39,6 +39,8 @@ export default function App() {
   const [marketError, setMarketError] = useState<string | null>(null);
   const [marketFetched, setMarketFetched] = useState<string | null>(null);
   const [marketFeedState, setMarketFeedState] = useState<"loading" | "live" | "partial" | "offline">("loading");
+  const [backendState, setBackendState] = useState<"checking" | "ready" | "unhealthy" | "unknown">("checking");
+  const [backendCheckedAt, setBackendCheckedAt] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -72,6 +74,24 @@ export default function App() {
 
   useEffect(() => { refreshMarkets(); }, [refreshMarkets]);
 
+  const refreshBackend = useCallback(async () => {
+    if (!API_BASE) { setBackendState("unknown"); return; }
+    setBackendState("checking");
+    try {
+      const response = await fetch(`${API_BASE}/api/core/status`, { method: "GET" });
+      const body = await response.json();
+      const healthy = response.ok && body && typeof body === "object" &&
+        (body.status === "ready" || body.status === "healthy") && body.configured === true;
+      setBackendState(healthy ? "ready" : "unhealthy");
+      setBackendCheckedAt(new Date().toISOString());
+    } catch {
+      setBackendState("unhealthy");
+      setBackendCheckedAt(new Date().toISOString());
+    }
+  }, []);
+
+  useEffect(() => { refreshBackend(); }, [refreshBackend]);
+
   const quoteFor = (symbol: SymbolCode) => quotes.find(q => q.symbol === symbol);
   const completedTasks = useMemo(() => tasks.filter(t => t.done).length, [tasks]);
 
@@ -100,12 +120,59 @@ export default function App() {
   };
 
   const renderHome = () => <ScrollView contentContainerStyle={styles.content}>
-    <View style={styles.hero}><Image source={require("./assets/nova-icon.png")} style={styles.logoImage} /><View style={{ flex: 1 }}><Text style={styles.brand}>NOVA <Text style={styles.cyan}>2.0</Text></Text><Text style={styles.muted}>Your personal intelligence workspace</Text></View><View style={styles.livePill}><View style={styles.dot} /><Text style={styles.liveText}>NOVA 2.0</Text></View></View>
-    <View style={styles.welcome}><Text style={styles.eyebrow}>THINK CLEARER · BUILD FASTER</Text><Text style={styles.welcomeTitle}>Your next big idea starts here.</Text><Text style={styles.muted}>A smarter space to research, reason, explore markets and turn ambitious ideas into clear next steps.</Text><Button label="OPEN INTELLIGENCE  →" onPress={() => setTab("Intelligence")} /></View>
-    <View style={styles.metrics}><Panel style={styles.metric}><Text style={styles.metricLabel}>WORKSPACE TASKS</Text><Text style={styles.metricValue}>{completedTasks}/{tasks.length}</Text><Text style={styles.metricFoot}>Completed</Text></Panel><Panel style={styles.metric}><Text style={styles.metricLabel}>MARKET FEED</Text><Text style={[styles.metricValue, { color: quotes.length ? C.green : C.muted }]}>{marketFeedState === "live" ? "LIVE DATA" : marketFeedState === "partial" ? "PARTIAL" : marketFeedState === "loading" ? "CHECKING" : "OFFLINE"}</Text><Text style={styles.metricFoot}>Provider dependent</Text></Panel></View>
-    <Text style={styles.sectionTitle}>QUICK ACCESS</Text>
-    <View style={styles.quickGrid}>{(["Intelligence", "Markets", "Workspace", "Connections"] as Tab[]).map((item, i) => <TouchableOpacity key={item} style={styles.quickCard} onPress={() => setTab(item)}><Text style={styles.quickIcon}>{["✳", "⌁", "▤", "⌘"][i]}</Text><Text style={styles.quickTitle}>{item}</Text><Text style={styles.mutedSmall}>{["Ask and explore", "Read-only quotes", "Projects and tasks", "Link services"][i]}</Text></TouchableOpacity>)}</View>
-    <Panel><Text style={styles.panelTitle}>NOVA operating principles</Text><Text style={styles.body}>Clear answers · Transparent data · Human approval for important actions. NOVA does not execute trades or control physical equipment.</Text></Panel>
+    <View style={styles.dashTop}>
+      <View style={styles.dashIdentity}>
+        <View style={styles.dashLogo}><Image source={require("./assets/nova-icon.png")} style={styles.dashLogoImage} /></View>
+        <View><Text style={styles.dashBrand}>NOVA <Text style={styles.cyan}>2.1</Text></Text><Text style={styles.dashSub}>PERSONAL INTELLIGENCE</Text></View>
+      </View>
+      <View style={styles.dashStatus}><View style={styles.dot} /><Text style={styles.dashStatusText}>SYSTEM READY</Text></View>
+    </View>
+
+    <View style={styles.dashGreeting}>
+      <Text style={styles.dashEyebrow}>YOUR INTELLIGENCE HUB</Text>
+      <Text style={styles.dashHeadline}>Think beyond{ "\n" }the obvious.</Text>
+      <Text style={styles.dashIntro}>One workspace for ideas, research, planning and better decisions.</Text>
+      <TouchableOpacity style={styles.dashPrimary} onPress={() => setTab("Intelligence")}>
+        <Text style={styles.dashPrimaryText}>START THINKING</Text><Text style={styles.dashArrow}>↗</Text>
+      </TouchableOpacity>
+      <View pointerEvents="none" style={styles.dashOrb}><View style={styles.dashOrbInner}><Text style={styles.dashOrbGlyph}>N</Text></View></View>
+    </View>
+
+    <View style={styles.dashSectionHead}><Text style={styles.dashSectionTitle}>LIVE OVERVIEW</Text><Text style={styles.dashSectionMeta}>UPDATED IN REAL TIME</Text></View>
+    <View style={styles.dashStats}>
+      <TouchableOpacity style={styles.dashStatCard} onPress={() => setTab("Workspace")}>
+        <View style={styles.dashStatTop}><Text style={styles.dashStatLabel}>WORKSPACE</Text><Text style={styles.dashStatIcon}>▤</Text></View>
+        <Text style={styles.dashStatValue}>{completedTasks}<Text style={styles.dashStatTotal}>/{tasks.length}</Text></Text>
+        <Text style={styles.dashStatFoot}>Tasks completed</Text>
+        <View style={styles.dashMiniTrack}><View style={[styles.dashMiniFill,{width:tasks.length?String(completedTasks/tasks.length*100)+"%":"0%"}]} /></View>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.dashStatCard} onPress={() => setTab("Markets")}>
+        <View style={styles.dashStatTop}><Text style={styles.dashStatLabel}>MARKET FEED</Text><Text style={styles.dashStatIcon}>⌁</Text></View>
+        <Text style={[styles.dashStatValue,{fontSize:19,color:marketFeedState==="live"?C.green:marketFeedState==="partial"?"#E8BD70":C.text}]}>{marketFeedState==="live"?"LIVE":marketFeedState==="partial"?"PARTIAL":marketFeedState==="loading"?"SYNCING":"OFFLINE"}</Text>
+        <Text style={styles.dashStatFoot}>Verified provider data</Text>
+        <View style={styles.dashFeedLine}><View style={[styles.dashFeedDot,{backgroundColor:marketFeedState==="live"?C.green:marketFeedState==="partial"?"#E8BD70":C.muted}]} /><Text style={styles.dashFeedText}>{quotes.length} instruments available</Text></View>
+      </TouchableOpacity>
+    </View>
+
+    <View style={styles.dashSectionHead}><Text style={styles.dashSectionTitle}>EXPLORE NOVA</Text><Text style={styles.dashSectionMeta}>YOUR TOOLS</Text></View>
+    <TouchableOpacity style={styles.dashFeature} onPress={() => setTab("Intelligence")}>
+      <View style={styles.dashFeatureIcon}><Text style={styles.dashFeatureGlyph}>✳</Text></View>
+      <View style={styles.dashFeatureCopy}><Text style={styles.dashFeatureTitle}>Intelligence</Text><Text style={styles.dashFeatureDesc}>Ask, analyse, research and turn complex ideas into clear plans.</Text></View>
+      <Text style={styles.dashFeatureArrow}>↗</Text>
+    </TouchableOpacity>
+    <View style={styles.dashToolGrid}>
+      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Markets")}><Text style={styles.dashToolIcon}>⌁</Text><Text style={styles.dashToolTitle}>Markets</Text><Text style={styles.dashToolDesc}>Read-only data</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Workspace")}><Text style={styles.dashToolIcon}>▤</Text><Text style={styles.dashToolTitle}>Workspace</Text><Text style={styles.dashToolDesc}>Projects & tasks</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Connections")}><Text style={styles.dashToolIcon}>⌘</Text><Text style={styles.dashToolTitle}>Connections</Text><Text style={styles.dashToolDesc}>Services & status</Text></TouchableOpacity>
+    </View>
+
+    <View style={styles.dashSectionHead}><Text style={styles.dashSectionTitle}>SYSTEM STATUS</Text><TouchableOpacity onPress={refreshBackend}><Text style={styles.dashSectionAction}>REFRESH ↻</Text></TouchableOpacity></View>
+    <View style={styles.dashSystemCard}>
+      <View style={styles.dashSystemRow}><View style={styles.dashSystemIcon}><Text style={styles.dashToolIcon}>⌘</Text></View><View style={{flex:1}}><Text style={styles.dashSystemTitle}>NOVA Core API</Text><Text style={styles.dashSystemDesc}>Secure backend · read-only health check</Text></View><View style={[styles.dashSystemBadge,{borderColor:backendState==="ready"?"#28664F":backendState==="checking"?"#276477":"#74404B"}]}><Text style={[styles.dashSystemBadgeText,{color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"ONLINE":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT SET":"OFFLINE"}</Text></View></View>
+      <View style={styles.dashSystemDivider} />
+      <Text style={styles.dashSystemFoot}>Last verified · {timeLabel(backendCheckedAt)}</Text>
+    </View>
+    <Text style={styles.dashDisclaimer}>NOVA is an advisory prototype. Important actions remain under your control.</Text>
   </ScrollView>;
 
   const renderIntelligence = () => <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={8}>
@@ -194,6 +261,13 @@ export default function App() {
     </ScrollView>;
   };
 
+  const renderMore = () => <ScrollView contentContainerStyle={styles.content}>
+    <Heading title="More tools" subtitle="Additional NOVA modules and service controls" />
+    <TouchableOpacity style={styles.moduleCard} onPress={() => setTab("Connections")}><View style={styles.moduleIcon}><Text style={styles.quickIcon}>⌘</Text></View><View style={{ flex: 1 }}><Text style={styles.panelTitle}>Connections center</Text><Text style={styles.mutedSmall}>Backend, market data and integration status</Text></View><Text style={styles.chevron}>›</Text></TouchableOpacity>
+    <TouchableOpacity style={styles.moduleCard} onPress={() => setTab("Practice")}><View style={styles.moduleIcon}><Text style={styles.quickIcon}>◈</Text></View><View style={{ flex: 1 }}><Text style={styles.panelTitle}>Practice simulator</Text><Text style={styles.mutedSmall}>Learn with local simulated orders only</Text></View><Text style={styles.chevron}>›</Text></TouchableOpacity>
+    <Panel><Text style={styles.panelTitle}>Workspace preferences</Text><Text style={styles.body}>More personalization and project controls can be added here without changing NOVA's protected backend services.</Text></Panel>
+  </ScrollView>;
+
   const renderWorkspace = () => <ScrollView contentContainerStyle={styles.content}>
     <Heading title="Workspace" subtitle="Keep projects and next actions organized" />
     <Panel><Text style={styles.eyebrow}>TASK OVERVIEW</Text><Text style={styles.metricValue}>{completedTasks} of {tasks.length}</Text><Text style={styles.muted}>Tasks completed</Text><View style={styles.progressTrack}><View style={[styles.progressFill, { width: tasks.length ? `${completedTasks / tasks.length * 100}%` : "0%" }]} /></View></Panel>
@@ -203,24 +277,24 @@ export default function App() {
     <Panel><Text style={styles.panelTitle}>Project space</Text><Text style={styles.body}>This first workspace stores tasks locally in the running app. Cloud sync, accounts and shared projects are not enabled yet.</Text></Panel>
   </ScrollView>;
 
-  const screens: Record<Tab, () => React.ReactNode> = { Home: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Connections: renderConnections, Practice: renderPractice, Workspace: renderWorkspace };
-  return <SafeAreaView style={styles.safe}>{Platform.OS === "web" ? <Analytics /> : null}<StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><View style={styles.topBrandRow}><Image source={require("./assets/nova-icon.png")} style={styles.topLogo} /><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text></View><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View><View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Home", "Intelligence", "Markets", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={styles.navItem}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["⌂", "✳", "⌁", "▤"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
+  const screens: Record<Tab, () => React.ReactNode> = { Home: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Connections: renderConnections, Practice: renderPractice, Workspace: renderWorkspace, More: renderMore };
+  return <SafeAreaView style={styles.safe}>{Platform.OS === "web" ? <Analytics /> : null}<StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><View style={styles.topBrandRow}><Image source={require("./assets/nova-icon.png")} style={styles.topLogo} /><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text></View><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View><View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Home", "Intelligence", "Markets", "Workspace", "More"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={styles.navItem}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["⌂", "✳", "⌁", "▤", "⋯"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item === "Home" ? "Dashboard" : item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
-  topBar: { height: 58, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#1B293B", backgroundColor: "#090F1B" }, topBrandRow: { flexDirection: "row", alignItems: "center", gap: 8 }, topLogo: { width: 27, height: 27, borderRadius: 8 }, logoImage: { width: 52, height: 52, borderRadius: 16, borderWidth: 1, borderColor: "#31517A" },
+  topBar: { height: 58, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#183344", backgroundColor: "#07111B" }, topBrandRow: { flexDirection: "row", alignItems: "center", gap: 8 }, topLogo: { width: 27, height: 27, borderRadius: 8 }, logoImage: { width: 52, height: 52, borderRadius: 16, borderWidth: 1, borderColor: "#31517A" },
   topBrand: { color: C.text, fontSize: 19, fontWeight: "900", letterSpacing: 2 }, topMeta: { color: C.muted, fontSize: 9, letterSpacing: 1.2, fontWeight: "700" },
-  content: { padding: 18, paddingBottom: 28, gap: 14 },
-  hero: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 7, paddingVertical: 5 },
+  content: { padding: 16, paddingBottom: 30, gap: 13 },
+  hero: { flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 5, paddingVertical: 5 }, logoFrame: { width: 53, height: 53, borderRadius: 17, padding: 2, backgroundColor: "#123B43", borderWidth: 1, borderColor: "#2C887F" },
   brandMark: { width: 42, height: 42, borderRadius: 13, backgroundColor: C.cyan, alignItems: "center", justifyContent: "center" }, brandMarkText: { color: C.bg, fontWeight: "900", fontSize: 25 },
   brand: { color: C.text, fontSize: 19, fontWeight: "900", letterSpacing: 1.7 }, cyan: { color: C.cyan },
   livePill: { borderWidth: 1, borderColor: "#285747", borderRadius: 20, paddingHorizontal: 9, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 5 }, dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.green }, liveText: { color: C.green, fontSize: 8, fontWeight: "900" },
-  welcome: { backgroundColor: "#102238", borderColor: "#31517A", borderWidth: 1, borderRadius: 22, padding: 21, gap: 12, marginBottom: 4, shadowColor: "#4A76FF", shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 5 }, eyebrow: { color: C.cyan, fontSize: 9, fontWeight: "900", letterSpacing: 1.5 }, welcomeTitle: { color: C.text, fontSize: 25, fontWeight: "800", lineHeight: 31 },
+  welcome: { backgroundColor: "#0D2634", borderColor: "#226B70", borderWidth: 1, borderRadius: 23, padding: 20, gap: 12, marginBottom: 5, shadowColor: "#24D7C4", shadowOpacity: 0.18, shadowRadius: 22, shadowOffset: { width: 0, height: 8 }, elevation: 7 }, eyebrow: { color: C.cyan, fontSize: 9, fontWeight: "900", letterSpacing: 1.5 }, welcomeTitle: { color: C.text, fontSize: 25, fontWeight: "800", lineHeight: 31 },
   muted: { color: C.muted, fontSize: 12, lineHeight: 19 }, mutedSmall: { color: C.muted, fontSize: 10, lineHeight: 16 },
-  button: { backgroundColor: "#176579", borderRadius: 11, paddingVertical: 13, paddingHorizontal: 14, alignItems: "center", marginTop: 8 }, buttonSecondary: { backgroundColor: C.panel2 }, buttonText: { color: "#FFFFFF", fontWeight: "900", fontSize: 10, letterSpacing: 0.6 },
-  metrics: { flexDirection: "row", gap: 10 }, metric: { flex: 1 }, panel: { backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 17, padding: 16, gap: 9 }, metricLabel: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.8 }, metricValue: { color: C.text, fontSize: 23, fontWeight: "900" }, metricFoot: { color: C.muted, fontSize: 10 },
-  sectionTitle: { color: C.muted, fontSize: 10, fontWeight: "900", letterSpacing: 1.4, marginTop: 5 }, quickGrid: { flexDirection: "row", gap: 8 }, quickCard: { flex: 1, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel, gap: 5 }, quickIcon: { color: C.cyan, fontSize: 19 }, quickTitle: { color: C.text, fontSize: 11, fontWeight: "800" },
+  button: { backgroundColor: "#087F83", borderRadius: 12, paddingVertical: 14, paddingHorizontal: 14, alignItems: "center", marginTop: 8, shadowColor: C.cyan, shadowOpacity: 0.18, shadowRadius: 10, elevation: 3 }, buttonSecondary: { backgroundColor: C.panel2 }, buttonText: { color: "#FFFFFF", fontWeight: "900", fontSize: 10, letterSpacing: 0.6 },
+  metrics: { flexDirection: "row", gap: 10 }, metric: { flex: 1, minHeight: 122, justifyContent: "space-between", borderTopWidth: 2, borderTopColor: C.cyan }, panel: { backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 18, padding: 15, gap: 9, shadowColor: "#000000", shadowOpacity: 0.16, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2 }, metricLabel: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.8 }, metricValue: { color: C.text, fontSize: 23, fontWeight: "900" }, metricFoot: { color: C.muted, fontSize: 10 },
+  sectionTitle: { color: C.muted, fontSize: 10, fontWeight: "900", letterSpacing: 1.4, marginTop: 5 }, quickGrid: { flexDirection: "row", gap: 8 }, quickCard: { flex: 1, minHeight: 102, padding: 11, borderRadius: 15, borderWidth: 1, borderColor: "#234151", backgroundColor: "#0B1925", gap: 6 }, quickIcon: { color: C.cyan, fontSize: 19 }, quickTitle: { color: C.text, fontSize: 11, fontWeight: "800" },
   panelTitle: { color: C.text, fontSize: 14, fontWeight: "800" }, body: { color: "#B2C0D1", fontSize: 12, lineHeight: 19 }, heading: { gap: 4, marginBottom: 3 }, pageTitle: { color: C.text, fontSize: 26, fontWeight: "900" },
   emptyChat: { alignItems: "center", paddingVertical: 28, marginTop: 12 }, emptyIcon: { color: C.cyan, fontSize: 30, marginBottom: 6 }, message: { padding: 13, borderRadius: 14, borderWidth: 1, gap: 6 }, userMessage: { backgroundColor: "#123449", borderColor: "#28617A", marginLeft: 30 }, aiMessage: { backgroundColor: C.panel, borderColor: C.line, marginRight: 18 }, messageRole: { color: C.cyan, fontSize: 9, fontWeight: "900", letterSpacing: 1 },
   composer: { flexDirection: "row", gap: 8, alignItems: "flex-end", padding: 12, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: C.bg }, composerInput: { flex: 1, maxHeight: 110, minHeight: 45, color: C.text, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 13, paddingHorizontal: 13, paddingVertical: 11, fontSize: 13 }, sendButton: { width: 45, height: 45, borderRadius: 13, backgroundColor: "#176579", alignItems: "center", justifyContent: "center" }, sendText: { color: "#FFF", fontSize: 23, fontWeight: "800" }, error: { color: C.red, fontSize: 11, lineHeight: 17 },
@@ -228,5 +302,63 @@ const styles = StyleSheet.create({
   progressTrack: { height: 6, backgroundColor: "#253348", borderRadius: 5, overflow: "hidden", marginTop: 5 }, progressFill: { height: 6, backgroundColor: C.cyan, borderRadius: 5 }, taskRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 12 }, checkCircle: { width: 21, height: 21, borderRadius: 7, borderWidth: 1, borderColor: "#58708A", alignItems: "center", justifyContent: "center" }, checked: { backgroundColor: "#176579", borderColor: C.cyan }, checkText: { color: "#FFF", fontWeight: "900" }, taskText: { color: C.text, fontSize: 12, flex: 1 }, taskDone: { color: C.muted, textDecorationLine: "line-through" },
   addTaskRow: { flexDirection: "row", gap: 8 }, taskInput: { flex: 1, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 12, color: C.text, paddingHorizontal: 13, fontSize: 12 }, addButton: { width: 45, borderRadius: 12, backgroundColor: "#176579", alignItems: "center", justifyContent: "center" }, addText: { color: "#FFF", fontSize: 24, fontWeight: "700" },
   practiceBanner: { backgroundColor: "#10283A", borderColor: "#245067" }, practiceLock: { alignSelf: "flex-start", borderWidth: 1, borderColor: "#8A6C38", backgroundColor: "#302719", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }, practiceLockText: { color: "#F0C77A", fontSize: 9, fontWeight: "900", letterSpacing: 0.7 }, practiceChoices: { flexDirection: "row", gap: 7, marginVertical: 5 }, practiceChoice: { flex: 1, padding: 10, borderWidth: 1, borderColor: C.line, borderRadius: 10, alignItems: "center", backgroundColor: C.panel2 }, practiceChoiceActive: { borderColor: C.cyan, backgroundColor: "#123449" }, practiceBuy: { borderColor: C.green, backgroundColor: "#14372F" }, practiceSell: { borderColor: C.red, backgroundColor: "#3A242B" }, practiceChoiceText: { color: C.muted, fontSize: 10, fontWeight: "900" }, practiceChoiceTextActive: { color: C.cyan }, practiceEstimate: { backgroundColor: "#0B1420", borderWidth: 1, borderColor: C.line, borderRadius: 12, padding: 12, gap: 4, marginTop: 5 }, practicePrice: { color: C.cyan, fontSize: 22, fontWeight: "900" }, practiceOrderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: C.line, paddingTop: 10, marginTop: 4 }, practiceSideTag: { fontSize: 9, fontWeight: "900" },
-  nav: { height: 67, backgroundColor: "#0D1521", borderTopWidth: 1, borderTopColor: C.line, flexDirection: "row", alignItems: "center", justifyContent: "space-around" }, navItem: { flex: 1, alignItems: "center", gap: 3 }, navIcon: { color: C.muted, fontSize: 19 }, navLabel: { color: C.muted, fontSize: 9, fontWeight: "700" }, navActive: { color: C.cyan },
+  systemPanel: { backgroundColor: "#0C1D29", borderColor: "#1D5A61" }, dashboardGrid: { flexDirection: "row", gap: 10 }, dashboardTile: { flex: 1, minHeight: 122, justifyContent: "space-between", overflow: "hidden", borderTopWidth: 2, borderTopColor: C.cyan }, tileValue: { color: C.cyan, fontSize: 13, fontWeight: "900", letterSpacing: 0.4 }, moduleCard: { flexDirection: "row", alignItems: "center", gap: 13, padding: 15, borderRadius: 16, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel }, moduleIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "#142A3B", alignItems: "center", justifyContent: "center" }, chevron: { color: C.cyan, fontSize: 25 },
+  nav: { height: 70, backgroundColor: "#07121C", borderTopWidth: 1, borderTopColor: "#1B3543", flexDirection: "row", alignItems: "center", justifyContent: "space-around", paddingTop: 5, paddingBottom: 4 }, navItem: { flex: 1, alignItems: "center", gap: 3 }, navIcon: { color: C.muted, fontSize: 19 }, navLabel: { color: C.muted, fontSize: 9, fontWeight: "700" }, navActive: { color: C.cyan },
+  dashTop:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:7},
+  dashIdentity:{flexDirection:"row",alignItems:"center",gap:11},
+  dashLogo:{width:45,height:45,borderRadius:15,backgroundColor:"#102B3A",borderWidth:1,borderColor:"#2D7181",alignItems:"center",justifyContent:"center",padding:3},
+  dashLogoImage:{width:37,height:37,borderRadius:11},
+  dashBrand:{color:C.text,fontSize:19,fontWeight:"900",letterSpacing:1.5},
+  dashSub:{color:"#7794A6",fontSize:8,fontWeight:"800",letterSpacing:1.4,marginTop:3},
+  dashStatus:{flexDirection:"row",alignItems:"center",gap:6,paddingHorizontal:10,paddingVertical:7,borderRadius:20,backgroundColor:"#102A25",borderWidth:1,borderColor:"#245443"},
+  dashStatusText:{color:C.green,fontSize:8,fontWeight:"900",letterSpacing:.6},
+  dashGreeting:{minHeight:250,backgroundColor:"#0A1D2B",borderWidth:1,borderColor:"#1C5262",borderRadius:25,padding:21,justifyContent:"center",overflow:"hidden",marginTop:7,marginBottom:7},
+  dashEyebrow:{color:C.cyan,fontSize:9,fontWeight:"900",letterSpacing:1.8,marginBottom:13},
+  dashHeadline:{color:"#F5FAFF",fontSize:35,fontWeight:"900",lineHeight:39,letterSpacing:-1.1,maxWidth:"80%"},
+  dashIntro:{color:"#9DB2C1",fontSize:12,lineHeight:19,marginTop:12,maxWidth:"78%"},
+  dashPrimary:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",backgroundColor:"#087F83",borderRadius:12,paddingHorizontal:15,paddingVertical:13,marginTop:19,width:178},
+  dashPrimaryText:{color:"#FFFFFF",fontSize:9,fontWeight:"900",letterSpacing:1},
+  dashArrow:{color:"#FFFFFF",fontSize:17,fontWeight:"800"},
+  dashOrb:{position:"absolute",right:-34,top:43,width:165,height:165,borderRadius:90,borderWidth:1,borderColor:"#277A83",backgroundColor:"rgba(35,172,172,0.08)",alignItems:"center",justifyContent:"center"},
+  dashOrbInner:{width:112,height:112,borderRadius:60,borderWidth:1,borderColor:"#3A9C9E",backgroundColor:"rgba(50,199,190,0.11)",alignItems:"center",justifyContent:"center"},
+  dashOrbGlyph:{color:"rgba(91,231,216,0.5)",fontSize:68,fontWeight:"200"},
+  dashSectionHead:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:13,marginBottom:9},
+  dashSectionTitle:{color:"#B5C7D4",fontSize:9,fontWeight:"900",letterSpacing:1.6},
+  dashSectionMeta:{color:"#617C8E",fontSize:8,fontWeight:"800",letterSpacing:1},
+  dashSectionAction:{color:C.cyan,fontSize:8,fontWeight:"900",letterSpacing:.8},
+  dashStats:{flexDirection:"row",gap:10},
+  dashStatCard:{flex:1,minHeight:132,backgroundColor:"#0C1927",borderWidth:1,borderColor:"#203849",borderRadius:17,padding:13,justifyContent:"space-between"},
+  dashStatTop:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
+  dashStatLabel:{color:"#7892A3",fontSize:8,fontWeight:"900",letterSpacing:1},
+  dashStatIcon:{color:C.cyan,fontSize:17},
+  dashStatValue:{color:C.text,fontSize:28,fontWeight:"900",marginTop:5},
+  dashStatTotal:{color:"#6D8798",fontSize:16,fontWeight:"700"},
+  dashStatFoot:{color:"#7892A3",fontSize:9,marginTop:1},
+  dashMiniTrack:{height:4,borderRadius:3,backgroundColor:"#243747",overflow:"hidden",marginTop:8},
+  dashMiniFill:{height:4,backgroundColor:C.cyan,borderRadius:3},
+  dashFeedLine:{flexDirection:"row",alignItems:"center",gap:6,marginTop:8},
+  dashFeedDot:{width:6,height:6,borderRadius:3},
+  dashFeedText:{color:"#91A6B5",fontSize:8},
+  dashFeature:{flexDirection:"row",alignItems:"center",gap:12,padding:15,backgroundColor:"#101E30",borderWidth:1,borderColor:"#35415E",borderRadius:18},
+  dashFeatureIcon:{width:42,height:42,borderRadius:14,backgroundColor:"#202744",alignItems:"center",justifyContent:"center"},
+  dashFeatureGlyph:{color:"#B59AFF",fontSize:22},
+  dashFeatureCopy:{flex:1,gap:4},
+  dashFeatureTitle:{color:C.text,fontSize:13,fontWeight:"900"},
+  dashFeatureDesc:{color:"#91A4B5",fontSize:9,lineHeight:15},
+  dashFeatureArrow:{color:"#B59AFF",fontSize:20,fontWeight:"800"},
+  dashToolGrid:{flexDirection:"row",gap:9,marginTop:9},
+  dashToolCard:{flex:1,minHeight:106,padding:11,backgroundColor:"#0C1927",borderWidth:1,borderColor:"#203849",borderRadius:15,justifyContent:"space-between"},
+  dashToolIcon:{color:C.cyan,fontSize:18},
+  dashToolTitle:{color:C.text,fontSize:10,fontWeight:"900",marginTop:6},
+  dashToolDesc:{color:"#8198A8",fontSize:8},
+  dashSystemCard:{padding:14,backgroundColor:"#0B1925",borderWidth:1,borderColor:"#234251",borderRadius:17,gap:10},
+  dashSystemRow:{flexDirection:"row",alignItems:"center",gap:10},
+  dashSystemIcon:{width:36,height:36,borderRadius:12,backgroundColor:"#142C3A",alignItems:"center",justifyContent:"center"},
+  dashSystemTitle:{color:C.text,fontSize:11,fontWeight:"900"},
+  dashSystemDesc:{color:"#8198A8",fontSize:8,marginTop:3},
+  dashSystemBadge:{paddingHorizontal:8,paddingVertical:5,borderRadius:8,borderWidth:1,backgroundColor:"#101D29"},
+  dashSystemBadgeText:{fontSize:8,fontWeight:"900",letterSpacing:.5},
+  dashSystemDivider:{height:1,backgroundColor:"#203747"},
+  dashSystemFoot:{color:"#7E94A4",fontSize:9},
+  dashDisclaimer:{color:"#5F7788",fontSize:8,lineHeight:14,textAlign:"center",marginTop:7,marginBottom:4},
 });
