@@ -176,22 +176,62 @@ export default function App() {
   </ScrollView>;
 
   const renderIntelligence = () => <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={8}>
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Heading title="Intelligence" subtitle="Research, reasoning and practical planning" />
-      <Panel><Text style={styles.eyebrow}>NOVA AI ASSISTANT</Text><Text style={styles.panelTitle}>A focused thinking partner</Text><Text style={styles.body}>Ask questions, break down a project, compare options or turn an idea into an action plan. Verify important information before acting.</Text></Panel>
-      {messages.length === 0 ? <Panel style={styles.emptyChat}><Text style={styles.emptyIcon}>✳</Text><Text style={styles.panelTitle}>Start a conversation</Text><Text style={styles.muted}>Try: “Help me plan the next milestone for NOVA.”</Text></Panel> : messages.map((m, i) => <View key={i} style={[styles.message, m.role === "user" ? styles.userMessage : styles.aiMessage]}><Text style={styles.messageRole}>{m.role === "user" ? "YOU" : "NOVA"}</Text><Text style={styles.body}>{m.content}</Text></View>)}
-      {chatLoading ? <Panel><ActivityIndicator color={C.cyan} /><Text style={[styles.muted, { textAlign: "center", marginTop: 8 }]}>NOVA is thinking…</Text></Panel> : null}
+    <View style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 10 }}>
+      <Text style={{ color: C.violet, fontSize: 9, fontWeight: "900", letterSpacing: 2 }}>NOVA / THINKING ENGINE</Text>
+      <Text style={{ color: C.text, fontSize: 29, fontWeight: "900", marginTop: 6 }}>Intelligence</Text>
+      <Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>A workspace for questions, ideas and decisions.</Text>
+    </View>
+    <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 5, gap: 12 }} keyboardShouldPersistTaps="handled">
+      <View style={{ padding: 18, borderRadius: 22, backgroundColor: "#17172B", borderWidth: 1, borderColor: "#514078", gap: 10 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <Text style={{ color: "#C4A9FF", fontSize: 9, fontWeight: "900", letterSpacing: 1.4 }}>NOVA INTELLIGENCE CORE</Text>
+          <Text style={{ color: C.green, fontSize: 9, fontWeight: "900" }}>● READY</Text>
+        </View>
+        <Text style={{ color: "#F7F3FF", fontSize: 23, lineHeight: 29, fontWeight: "900" }}>What are we{ "\n" }figuring out today?</Text>
+        <Text style={{ color: "#B7ABC9", fontSize: 11, lineHeight: 18 }}>Explore a difficult question, develop an idea, or turn a goal into a practical plan.</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 2 }}>
+          {["RESEARCH", "ANALYSE", "CREATE", "PLAN"].map(label => <View key={label} style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: "#28213D", borderWidth: 1, borderColor: "#59477B" }}><Text style={{ color: "#D7C8F5", fontSize: 8, fontWeight: "900" }}>{label}</Text></View>)}
+        </View>
+      </View>
+      {messages.length === 0 ? <View style={{ padding: 16, borderRadius: 18, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, gap: 10 }}>
+        <Text style={{ color: C.text, fontSize: 13, fontWeight: "900" }}>Start with a direction</Text>
+        {["Break a big goal into milestones", "Compare two ideas objectively", "Help me research a new topic"].map((item, i) => <TouchableOpacity key={item} onPress={() => setPrompt(item)} style={{ flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 12, backgroundColor: "#101F2D", borderWidth: 1, borderColor: "#263D50" }}><Text style={{ color: C.violet, fontSize: 15, marginRight: 10 }}>{["✳", "⌁", "↗"][i]}</Text><Text style={{ color: "#C5D2DE", fontSize: 11, flex: 1 }}>{item}</Text><Text style={{ color: C.violet, fontSize: 17 }}>›</Text></TouchableOpacity>)}
+      </View> : messages.map((m, i) => <View key={i} style={{ padding: 14, borderRadius: 16, borderWidth: 1, borderColor: m.role === "user" ? "#3D5479" : "#40365E", backgroundColor: m.role === "user" ? "#14243A" : "#171729", marginLeft: m.role === "user" ? 25 : 0, marginRight: m.role === "assistant" ? 15 : 0, gap: 7 }}><Text style={{ color: m.role === "user" ? C.cyan : "#C4A9FF", fontSize: 9, fontWeight: "900", letterSpacing: 1 }}>{m.role === "user" ? "YOU" : "NOVA · RESPONSE"}</Text><Text style={{ color: "#D6E1EA", fontSize: 12, lineHeight: 20 }}>{m.content}</Text></View>)}
+      {chatLoading ? <View style={{ padding: 16, borderRadius: 14, backgroundColor: C.panel, alignItems: "center", gap: 8 }}><ActivityIndicator color={C.violet} /><Text style={{ color: C.muted, fontSize: 11 }}>NOVA is thinking…</Text></View> : null}
       {chatError ? <Text style={styles.error}>{chatError}</Text> : null}
     </ScrollView>
-    <View style={styles.composer}><TextInput value={prompt} onChangeText={setPrompt} placeholder="Ask NOVA anything…" placeholderTextColor={C.muted} multiline style={styles.composerInput} /><TouchableOpacity onPress={sendMessage} disabled={!prompt.trim() || chatLoading} style={[styles.sendButton, (!prompt.trim() || chatLoading) && { opacity: 0.45 }]}><Text style={styles.sendText}>↑</Text></TouchableOpacity></View>
+    <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-end", padding: 12, borderTopWidth: 1, borderTopColor: "#302A48", backgroundColor: "#090D18" }}>
+      <TextInput value={prompt} onChangeText={setPrompt} placeholder="Message NOVA…" placeholderTextColor={C.muted} multiline style={{ flex: 1, maxHeight: 110, minHeight: 48, color: C.text, backgroundColor: "#111A2A", borderColor: "#393252", borderWidth: 1, borderRadius: 15, paddingHorizontal: 14, paddingVertical: 12, fontSize: 13 }} />
+      <TouchableOpacity onPress={sendMessage} disabled={!prompt.trim() || chatLoading} style={{ width: 48, height: 48, borderRadius: 15, backgroundColor: "#7652B9", alignItems: "center", justifyContent: "center", opacity: !prompt.trim() || chatLoading ? 0.45 : 1 }}><Text style={{ color: "#FFF", fontSize: 23, fontWeight: "900" }}>↑</Text></TouchableOpacity>
+    </View>
   </KeyboardAvoidingView>;
 
-  const renderMarkets = () => <ScrollView contentContainerStyle={styles.content}>
-    <Heading title="Markets" subtitle="Provider-supplied information · Read only" />
-    <Panel><View style={styles.rowBetween}><Text style={styles.panelTitle}>Market data connection</Text><Text style={[styles.statusTag, { color: marketFeedState === "live" ? C.green : marketFeedState === "partial" ? "#E8BD70" : C.red }]}>{marketFeedState === "live" ? "● LIVE" : marketFeedState === "partial" ? "● PARTIAL" : marketFeedState === "loading" ? "● CHECKING" : "● OFFLINE"}</Text></View><Text style={styles.body}>{marketError || "Values below are returned by Twelve Data. Check provider timestamps for freshness."}</Text><Button label={marketLoading ? "REFRESHING…" : "REFRESH REAL MARKET DATA"} onPress={refreshMarkets} disabled={marketLoading} /><Text style={styles.mutedSmall}>Received by NOVA: {timeLabel(marketFetched)}</Text></Panel>
-    <Text style={styles.sectionTitle}>WATCHLIST</Text>
-    {SYMBOLS.map(symbol => { const q = quoteFor(symbol); return <Panel key={symbol} style={styles.quoteCard}><View style={styles.rowBetween}><View><Text style={styles.quoteSymbol}>{symbol}</Text><Text style={styles.mutedSmall}>{symbol === "XAU/USD" ? "GOLD SPOT" : "FOREIGN EXCHANGE"}</Text></View><View style={{ alignItems: "flex-end" }}><Text style={styles.quotePrice}>{q?.price ?? "—"}</Text><Text style={styles.mutedSmall}>{q?.source ?? "No verified quote"}</Text></View></View><Text style={styles.mutedSmall}>Provider timestamp: {timeLabel(q?.quote_time)}</Text></Panel>; })}
-    <Panel><Text style={styles.panelTitle}>Data integrity</Text><Text style={styles.body}>NOVA never invents missing prices, creates sample profit/loss or connects to a broker to place orders. Market information is not financial advice.</Text></Panel>
+  const renderMarkets = () => <ScrollView contentContainerStyle={{ padding: 17, paddingBottom: 32, gap: 13 }}>
+    <View style={{ marginBottom: 3 }}>
+      <Text style={{ color: C.green, fontSize: 9, fontWeight: "900", letterSpacing: 2 }}>NOVA / MARKET INTELLIGENCE</Text>
+      <Text style={{ color: C.text, fontSize: 29, fontWeight: "900", marginTop: 6 }}>Markets</Text>
+      <Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>A clean view of your watchlist and data quality.</Text>
+    </View>
+    <View style={{ padding: 16, borderRadius: 20, backgroundColor: "#102820", borderWidth: 1, borderColor: "#285B48", gap: 9 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <Text style={{ color: "#9BD8B9", fontSize: 9, fontWeight: "900", letterSpacing: 1.3 }}>DATA FEED STATUS</Text>
+        <View style={{ paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, backgroundColor: "#183B2D" }}><Text style={{ color: marketFeedState === "live" ? C.green : marketFeedState === "partial" ? "#E8BD70" : C.red, fontSize: 9, fontWeight: "900" }}>{marketFeedState.toUpperCase()}</Text></View>
+      </View>
+      <Text style={{ color: "#F0FFF7", fontSize: 22, fontWeight: "900" }}>{quotes.length} <Text style={{ color: "#9AB9A9", fontSize: 13 }}>instruments available</Text></Text>
+      <Text style={{ color: "#A7C2B4", fontSize: 10, lineHeight: 16 }}>{marketError || "Quotes are supplied by the configured data provider. No missing prices are estimated."}</Text>
+      <TouchableOpacity onPress={refreshMarkets} disabled={marketLoading} style={{ backgroundColor: "#1A5943", borderRadius: 11, padding: 12, alignItems: "center", opacity: marketLoading ? 0.6 : 1 }}><Text style={{ color: "#E7FFF1", fontSize: 9, fontWeight: "900", letterSpacing: 1 }}>{marketLoading ? "UPDATING…" : "↻  REFRESH WATCHLIST"}</Text></TouchableOpacity>
+      <Text style={{ color: "#86A997", fontSize: 9 }}>Last received · {timeLabel(marketFetched)}</Text>
+    </View>
+    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}><Text style={{ color: "#C0D0DC", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 }}>YOUR WATCHLIST</Text><Text style={{ color: C.muted, fontSize: 9 }}>3 SYMBOLS</Text></View>
+    {SYMBOLS.map((symbol, i) => { const q = quoteFor(symbol); return <View key={symbol} style={{ padding: 15, borderRadius: 17, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, gap: 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><View style={{ width: 39, height: 39, borderRadius: 13, backgroundColor: i === 2 ? "#34291D" : "#142B3B", alignItems: "center", justifyContent: "center" }}><Text style={{ color: i === 2 ? "#E8BD70" : C.cyan, fontSize: 13, fontWeight: "900" }}>{["€","£","Au"][i]}</Text></View><View><Text style={{ color: C.text, fontSize: 15, fontWeight: "900" }}>{symbol}</Text><Text style={{ color: C.muted, fontSize: 9, marginTop: 3 }}>{i === 2 ? "GOLD SPOT" : "FOREIGN EXCHANGE"}</Text></View></View>
+        <View style={{ alignItems: "flex-end" }}><Text style={{ color: q ? C.green : "#91A2B1", fontSize: 20, fontWeight: "900" }}>{q?.price ?? "—"}</Text><Text style={{ color: C.muted, fontSize: 9 }}>{q?.source ?? "Awaiting verified quote"}</Text></View>
+      </View>
+      <View style={{ height: 1, backgroundColor: "#243848" }} />
+      <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Text style={{ color: "#71899A", fontSize: 9 }}>PROVIDER TIMESTAMP</Text><Text style={{ color: "#A9BAC7", fontSize: 9 }}>{timeLabel(q?.quote_time)}</Text></View>
+    </View>; })}
+    <View style={{ padding: 14, borderRadius: 15, backgroundColor: "#171B29", borderWidth: 1, borderColor: "#3A3B54", gap: 6 }}><Text style={{ color: "#C9B8FF", fontSize: 10, fontWeight: "900" }}>DATA INTEGRITY</Text><Text style={{ color: "#AAB6C7", fontSize: 10, lineHeight: 17 }}>Read-only market information. NOVA does not connect to a broker, place trades or invent unavailable prices. This is not financial advice.</Text></View>
   </ScrollView>;
 
   const renderConnections = () => <ScrollView contentContainerStyle={styles.content}>
@@ -261,20 +301,30 @@ export default function App() {
     </ScrollView>;
   };
 
-  const renderMore = () => <ScrollView contentContainerStyle={styles.content}>
-    <Heading title="More tools" subtitle="Additional NOVA modules and service controls" />
-    <TouchableOpacity style={styles.moduleCard} onPress={() => setTab("Connections")}><View style={styles.moduleIcon}><Text style={styles.quickIcon}>⌘</Text></View><View style={{ flex: 1 }}><Text style={styles.panelTitle}>Connections center</Text><Text style={styles.mutedSmall}>Backend, market data and integration status</Text></View><Text style={styles.chevron}>›</Text></TouchableOpacity>
-    <TouchableOpacity style={styles.moduleCard} onPress={() => setTab("Practice")}><View style={styles.moduleIcon}><Text style={styles.quickIcon}>◈</Text></View><View style={{ flex: 1 }}><Text style={styles.panelTitle}>Practice simulator</Text><Text style={styles.mutedSmall}>Learn with local simulated orders only</Text></View><Text style={styles.chevron}>›</Text></TouchableOpacity>
-    <Panel><Text style={styles.panelTitle}>Workspace preferences</Text><Text style={styles.body}>More personalization and project controls can be added here without changing NOVA's protected backend services.</Text></Panel>
+  const renderMore = () => <ScrollView contentContainerStyle={{ padding: 17, paddingBottom: 32, gap: 13 }}>
+    <View style={{ marginBottom: 4 }}><Text style={{ color: C.violet, fontSize: 9, fontWeight: "900", letterSpacing: 2 }}>NOVA / CONTROL CENTER</Text><Text style={{ color: C.text, fontSize: 29, fontWeight: "900", marginTop: 6 }}>More</Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>Your modules, preferences and system controls.</Text></View>
+    <View style={{ padding: 17, borderRadius: 21, backgroundColor: "#17172B", borderWidth: 1, borderColor: "#514078", gap: 8 }}><Text style={{ color: "#C5A9FF", fontSize: 9, fontWeight: "900", letterSpacing: 1.5 }}>NOVA MODULES</Text><Text style={{ color: "#F5F0FF", fontSize: 21, fontWeight: "900" }}>Everything in one place.</Text><Text style={{ color: "#B4A9C8", fontSize: 10, lineHeight: 17 }}>Open a module to review its tools, permissions and current capabilities.</Text></View>
+    <TouchableOpacity onPress={() => setTab("Connections")} style={{ flexDirection: "row", alignItems: "center", padding: 15, borderRadius: 17, backgroundColor: C.panel, borderWidth: 1, borderColor: "#28566A", gap: 12 }}><View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: "#123247", alignItems: "center", justifyContent: "center" }}><Text style={{ color: C.cyan, fontSize: 21 }}>⌘</Text></View><View style={{ flex: 1, gap: 4 }}><Text style={{ color: C.text, fontSize: 13, fontWeight: "900" }}>Connections center</Text><Text style={{ color: C.muted, fontSize: 10 }}>Backend, data providers and integration safety</Text></View><Text style={{ color: C.cyan, fontSize: 22 }}>›</Text></TouchableOpacity>
+    <TouchableOpacity onPress={() => setTab("Practice")} style={{ flexDirection: "row", alignItems: "center", padding: 15, borderRadius: 17, backgroundColor: C.panel, borderWidth: 1, borderColor: "#4B3B67", gap: 12 }}><View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: "#29213C", alignItems: "center", justifyContent: "center" }}><Text style={{ color: C.violet, fontSize: 21 }}>◈</Text></View><View style={{ flex: 1, gap: 4 }}><Text style={{ color: C.text, fontSize: 13, fontWeight: "900" }}>Practice simulator</Text><Text style={{ color: C.muted, fontSize: 10 }}>Learning environment with simulated orders only</Text></View><Text style={{ color: C.violet, fontSize: 22 }}>›</Text></TouchableOpacity>
+    <View style={{ padding: 15, borderRadius: 17, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, gap: 9 }}><Text style={{ color: C.text, fontSize: 13, fontWeight: "900" }}>Operating principles</Text>{["Human approval for important actions", "Provider-backed data, never invented", "Credentials stay outside the app", "Read-only integrations by default"].map((item, i) => <View key={item} style={{ flexDirection: "row", alignItems: "center", gap: 9 }}><Text style={{ color: C.green, fontSize: 12 }}>✓</Text><Text style={{ color: "#AEBECD", fontSize: 10, flex: 1 }}>{item}</Text></View>)}</View>
+    <View style={{ padding: 14, borderRadius: 15, backgroundColor: "#101B27", borderWidth: 1, borderColor: "#263A4B", gap: 4 }}><Text style={{ color: C.muted, fontSize: 9, fontWeight: "900", letterSpacing: 1 }}>NOVA 2.1 · PROTOTYPE</Text><Text style={{ color: "#879BAB", fontSize: 10, lineHeight: 16 }}>Additional preferences and account features can be added in later releases. They are not represented as active until implemented.</Text></View>
   </ScrollView>;
 
-  const renderWorkspace = () => <ScrollView contentContainerStyle={styles.content}>
-    <Heading title="Workspace" subtitle="Keep projects and next actions organized" />
-    <Panel><Text style={styles.eyebrow}>TASK OVERVIEW</Text><Text style={styles.metricValue}>{completedTasks} of {tasks.length}</Text><Text style={styles.muted}>Tasks completed</Text><View style={styles.progressTrack}><View style={[styles.progressFill, { width: tasks.length ? `${completedTasks / tasks.length * 100}%` : "0%" }]} /></View></Panel>
-    <Text style={styles.sectionTitle}>YOUR TASKS</Text>
-    {tasks.map(task => <TouchableOpacity key={task.id} onPress={() => setTasks(current => current.map(t => t.id === task.id ? { ...t, done: !t.done } : t))} style={styles.taskRow}><View style={[styles.checkCircle, task.done && styles.checked]}><Text style={styles.checkText}>{task.done ? "✓" : ""}</Text></View><Text style={[styles.taskText, task.done && styles.taskDone]}>{task.title}</Text></TouchableOpacity>)}
-    <View style={styles.addTaskRow}><TextInput value={newTask} onChangeText={setNewTask} placeholder="Add a task…" placeholderTextColor={C.muted} style={styles.taskInput} onSubmitEditing={addTask} returnKeyType="done" /><TouchableOpacity style={styles.addButton} onPress={addTask}><Text style={styles.addText}>+</Text></TouchableOpacity></View>
-    <Panel><Text style={styles.panelTitle}>Project space</Text><Text style={styles.body}>This first workspace stores tasks locally in the running app. Cloud sync, accounts and shared projects are not enabled yet.</Text></Panel>
+  const renderWorkspace = () => <ScrollView contentContainerStyle={{ padding: 17, paddingBottom: 32, gap: 13 }}>
+    <View style={{ marginBottom: 4 }}><Text style={{ color: C.cyan, fontSize: 9, fontWeight: "900", letterSpacing: 2 }}>NOVA / PROJECT STUDIO</Text><Text style={{ color: C.text, fontSize: 29, fontWeight: "900", marginTop: 6 }}>Workspace</Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>Turn plans into visible progress.</Text></View>
+    <View style={{ padding: 17, borderRadius: 20, backgroundColor: "#102A36", borderWidth: 1, borderColor: "#286274", gap: 12 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}><Text style={{ color: "#9CD8E2", fontSize: 9, fontWeight: "900", letterSpacing: 1.3 }}>PROJECT OVERVIEW</Text><Text style={{ color: C.cyan, fontSize: 9, fontWeight: "900" }}>LOCAL BOARD</Text></View>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 7 }}><Text style={{ color: "#F2FCFF", fontSize: 34, fontWeight: "900" }}>{completedTasks}</Text><Text style={{ color: "#A3C4CE", fontSize: 12, marginBottom: 5 }}>of {tasks.length} completed</Text></View>
+      <View style={{ height: 7, borderRadius: 5, backgroundColor: "#234554", overflow: "hidden" }}><View style={{ height: 7, borderRadius: 5, backgroundColor: C.cyan, width: tasks.length ? String(completedTasks / tasks.length * 100) + "%" : "0%" }} /></View>
+      <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Text style={{ color: "#A3C4CE", fontSize: 9 }}>Progress</Text><Text style={{ color: C.cyan, fontSize: 9, fontWeight: "900" }}>{tasks.length ? Math.round(completedTasks / tasks.length * 100) : 0}%</Text></View>
+    </View>
+    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}><Text style={{ color: "#C0D0DC", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 }}>TASK BOARD</Text><Text style={{ color: C.muted, fontSize: 9 }}>{tasks.length} ITEMS</Text></View>
+    {tasks.map((task, i) => <TouchableOpacity key={task.id} onPress={() => setTasks(current => current.map(t => t.id === task.id ? { ...t, done: !t.done } : t))} style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 15, backgroundColor: C.panel, borderWidth: 1, borderColor: task.done ? "#285B48" : C.line }}>
+      <View style={{ width: 25, height: 25, borderRadius: 9, borderWidth: 1.5, borderColor: task.done ? C.green : "#5B7184", backgroundColor: task.done ? "#153B2D" : "#101E2B", alignItems: "center", justifyContent: "center" }}><Text style={{ color: C.green, fontSize: 14, fontWeight: "900" }}>{task.done ? "✓" : ""}</Text></View>
+      <View style={{ flex: 1, gap: 4 }}><Text style={{ color: task.done ? "#82999A" : C.text, fontSize: 11, fontWeight: "800", textDecorationLine: task.done ? "line-through" : "none" }}>{task.title}</Text><Text style={{ color: C.muted, fontSize: 8 }}>{task.done ? "COMPLETED" : "IN PROGRESS"} · TASK {String(i + 1).padStart(2, "0")}</Text></View><Text style={{ color: C.cyan, fontSize: 18 }}>›</Text>
+    </TouchableOpacity>)}
+    <View style={{ flexDirection: "row", gap: 8 }}><TextInput value={newTask} onChangeText={setNewTask} placeholder="Add a new task to your board…" placeholderTextColor={C.muted} style={{ flex: 1, minHeight: 48, color: C.text, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 13, paddingHorizontal: 13, fontSize: 11 }} onSubmitEditing={addTask} returnKeyType="done" /><TouchableOpacity onPress={addTask} style={{ width: 49, borderRadius: 13, backgroundColor: "#087F83", alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#FFF", fontSize: 24, fontWeight: "700" }}>+</Text></TouchableOpacity></View>
+    <View style={{ padding: 14, borderRadius: 15, backgroundColor: "#171B29", borderWidth: 1, borderColor: "#3A3B54", gap: 5 }}><Text style={{ color: "#C9B8FF", fontSize: 10, fontWeight: "900" }}>WORKSPACE NOTE</Text><Text style={{ color: "#AAB6C7", fontSize: 10, lineHeight: 17 }}>Tasks are stored locally in the running app. Cloud sync, accounts and shared projects are not enabled in this prototype yet.</Text></View>
   </ScrollView>;
 
   const screens: Record<Tab, () => React.ReactNode> = { Home: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Connections: renderConnections, Practice: renderPractice, Workspace: renderWorkspace, More: renderMore };
