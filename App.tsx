@@ -190,8 +190,8 @@ export default function App() {
       </TouchableOpacity>
       <TouchableOpacity style={styles.dashStatCard} onPress={() => setTab("Markets")}>
         <View style={styles.dashStatTop}><Text style={styles.dashStatLabel}>MARKET DATA</Text><Text style={styles.dashStatIcon}>⌁</Text></View>
-        <Text style={[styles.dashStatValue,{fontSize:18,color:marketFeedState==="live"?C.green:marketFeedState==="partial"?"#E8BD70":marketFeedState==="loading"?C.cyan:C.red}]}>{marketFeedState==="live"?"LIVE":marketFeedState==="partial"?"PARTIAL":marketFeedState==="loading"?"CHECKING":"OFFLINE"}</Text>
-        <Text style={styles.dashStatFoot}>{quotes.length} verified quotes currently loaded</Text>
+        <Text style={[styles.dashStatValue,{fontSize:18,color:marketFeedState==="live"?C.green:marketFeedState==="partial"?"#E8BD70":marketFeedState==="loading"?C.cyan:C.red}]}>{marketFeedState==="live"?"CONNECTED":marketFeedState==="partial"?"PARTIAL":marketFeedState==="loading"?"CHECKING":"OFFLINE"}</Text>
+        <Text style={styles.dashStatFoot}>{quotes.length} provider quotes currently loaded</Text>
         <Text style={styles.dashStatFoot}>Source · Twelve Data</Text>
       </TouchableOpacity>
     </View>
@@ -215,7 +215,7 @@ export default function App() {
     <View style={styles.dashSystemCard}>
       <View style={styles.dashSystemRow}><View style={styles.dashSystemIcon}><Text style={styles.dashToolIcon}>⌘</Text></View><View style={{flex:1}}><Text style={styles.dashSystemTitle}>NOVA Core API</Text><Text style={styles.dashSystemDesc}>GET /api/core/status · advisory backend</Text></View><View style={[styles.dashSystemBadge,{borderColor:backendState==="ready"?"#28664F":backendState==="checking"?"#276477":"#74404B"}]}><Text style={[styles.dashSystemBadgeText,{color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"READY":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT SET":"UNAVAILABLE"}</Text></View></View>
       <View style={styles.dashSystemDivider} />
-      <View style={styles.dashSystemRow}><View style={styles.dashSystemIcon}><Text style={styles.dashToolIcon}>⌁</Text></View><View style={{flex:1}}><Text style={styles.dashSystemTitle}>Market data · Twelve Data</Text><Text style={styles.dashSystemDesc}>Read-only provider quote service</Text></View><View style={[styles.dashSystemBadge,{borderColor:marketFeedState==="live"?"#28664F":marketFeedState==="loading"?"#276477":"#74404B"}]}><Text style={[styles.dashSystemBadgeText,{color:marketFeedState==="live"?C.green:marketFeedState==="loading"?C.cyan:C.red}]}>{marketFeedState==="live"?"LIVE":marketFeedState==="loading"?"CHECKING":marketFeedState.toUpperCase()}</Text></View></View>
+      <View style={styles.dashSystemRow}><View style={styles.dashSystemIcon}><Text style={styles.dashToolIcon}>⌁</Text></View><View style={{flex:1}}><Text style={styles.dashSystemTitle}>Market data · Twelve Data</Text><Text style={styles.dashSystemDesc}>Read-only provider quote service</Text></View><View style={[styles.dashSystemBadge,{borderColor:marketFeedState==="live"?"#28664F":marketFeedState==="loading"?"#276477":"#74404B"}]}><Text style={[styles.dashSystemBadgeText,{color:marketFeedState==="live"?C.green:marketFeedState==="loading"?C.cyan:C.red}]}>{marketFeedState==="live"?"CONNECTED":marketFeedState==="loading"?"CHECKING":marketFeedState.toUpperCase()}</Text></View></View>
       <View style={styles.dashSystemDivider} />
       <Text style={styles.dashSystemFoot}>Core last checked · {timeLabel(backendCheckedAt)}</Text>
       <Text style={styles.dashSystemFoot}>Market last fetched · {timeLabel(marketFetched)}</Text>
