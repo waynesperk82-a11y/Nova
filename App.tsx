@@ -254,33 +254,75 @@ export default function App() {
     </View>
   </KeyboardAvoidingView>;
 
-  const renderMarkets = () => <ScrollView contentContainerStyle={{ padding: 17, paddingBottom: 32, gap: 13 }}>
-    <View style={{ marginBottom: 3 }}>
-      <Text style={{ color: C.green, fontSize: 9, fontWeight: "900", letterSpacing: 2 }}>NOVA / MARKET INTELLIGENCE</Text>
-      <Text style={{ color: C.text, fontSize: 29, fontWeight: "900", marginTop: 6 }}>Markets</Text>
-      <Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>A clean view of your watchlist and data quality.</Text>
-    </View>
-    <View style={{ padding: 16, borderRadius: 20, backgroundColor: "#102820", borderWidth: 1, borderColor: "#285B48", gap: 9 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={{ color: "#9BD8B9", fontSize: 9, fontWeight: "900", letterSpacing: 1.3 }}>DATA FEED STATUS</Text>
-        <View style={{ paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, backgroundColor: "#183B2D" }}><Text style={{ color: marketFeedState === "live" ? C.green : marketFeedState === "partial" ? "#E8BD70" : C.red, fontSize: 9, fontWeight: "900" }}>{marketFeedState.toUpperCase()}</Text></View>
+  const renderMarkets = () => {
+    const selectedQuote = quoteFor(selectedMarketSymbol);
+    const categorySymbols = marketCategory === "Watchlist" ? watchlistSymbols : MARKET_GROUPS[marketCategory];
+    const visibleSymbols = categorySymbols.filter(symbol => `${symbol} ${MARKET_NAMES[symbol]}`.toLowerCase().includes(marketSearch.toLowerCase()));
+    const chartValues = chartPoints.map(point => point.close).filter(value => Number.isFinite(value));
+    const minValue = chartValues.length ? Math.min(...chartValues) : 0;
+    const maxValue = chartValues.length ? Math.max(...chartValues) : 0;
+    const chartSegments = chartPoints.slice(-24).map((point, index, points) => {
+      if (index === points.length - 1 || maxValue === minValue) return null;
+      const next = points[index + 1];
+      const x1 = index * (280 / Math.max(points.length - 1, 1));
+      const x2 = (index + 1) * (280 / Math.max(points.length - 1, 1));
+      const y1 = 126 - ((point.close - minValue) / (maxValue - minValue)) * 108;
+      const y2 = 126 - ((next.close - minValue) / (maxValue - minValue)) * 108;
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      return { key: `${point.time}-${index}`, left: x1, top: (y1 + y2) / 2, width: Math.sqrt(dx * dx + dy * dy), rotate: `${Math.atan2(dy, dx) * 180 / Math.PI}deg` };
+    }).filter(Boolean) as {key:string;left:number;top:number;width:number;rotate:string}[];
+    const toggleWatchlist = (symbol: SymbolCode) => setWatchlistSymbols(current => current.includes(symbol) ? current.filter(item => item !== symbol) : [...current, symbol]);
+    return <ScrollView contentContainerStyle={{ padding: 17, paddingBottom: 32, gap: 13 }}>
+      <View style={{ marginBottom: 3 }}>
+        <Text style={{ color: C.cyan, fontSize: 9, fontWeight: "900", letterSpacing: 2 }}>NOVA / MARKET INTELLIGENCE</Text>
+        <Text style={{ color: C.text, fontSize: 30, fontWeight: "900", marginTop: 5 }}>Markets</Text>
+        <Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>Explore provider-backed instruments and historical price data.</Text>
       </View>
-      <Text style={{ color: "#F0FFF7", fontSize: 22, fontWeight: "900" }}>{quotes.length} <Text style={{ color: "#9AB9A9", fontSize: 13 }}>instruments available</Text></Text>
-      <Text style={{ color: "#A7C2B4", fontSize: 10, lineHeight: 16 }}>{marketError || "Quotes are supplied by the configured data provider. No missing prices are estimated."}</Text>
-      <TouchableOpacity onPress={refreshMarkets} disabled={marketLoading} style={{ backgroundColor: "#1A5943", borderRadius: 11, padding: 12, alignItems: "center", opacity: marketLoading ? 0.6 : 1 }}><Text style={{ color: "#E7FFF1", fontSize: 9, fontWeight: "900", letterSpacing: 1 }}>{marketLoading ? "UPDATING…" : "↻  REFRESH WATCHLIST"}</Text></TouchableOpacity>
-      <Text style={{ color: "#86A997", fontSize: 9 }}>Last received · {timeLabel(marketFetched)}</Text>
-    </View>
-    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 3 }}><Text style={{ color: "#C0D0DC", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 }}>YOUR WATCHLIST</Text><Text style={{ color: C.muted, fontSize: 9 }}>3 SYMBOLS</Text></View>
-    {SYMBOLS.map((symbol, i) => { const q = quoteFor(symbol); return <View key={symbol} style={{ padding: 15, borderRadius: 17, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, gap: 12 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><View style={{ width: 39, height: 39, borderRadius: 13, backgroundColor: i === 2 ? "#34291D" : "#142B3B", alignItems: "center", justifyContent: "center" }}><Text style={{ color: i === 2 ? "#E8BD70" : C.cyan, fontSize: 13, fontWeight: "900" }}>{["€","£","Au"][i]}</Text></View><View><Text style={{ color: C.text, fontSize: 15, fontWeight: "900" }}>{symbol}</Text><Text style={{ color: C.muted, fontSize: 9, marginTop: 3 }}>{i === 2 ? "GOLD SPOT" : "FOREIGN EXCHANGE"}</Text></View></View>
-        <View style={{ alignItems: "flex-end" }}><Text style={{ color: q ? C.green : "#91A2B1", fontSize: 20, fontWeight: "900" }}>{q?.price ?? "—"}</Text><Text style={{ color: C.muted, fontSize: 9 }}>{q?.source ?? "Awaiting verified quote"}</Text></View>
+      <View style={{ padding: 16, borderRadius: 20, backgroundColor: "#10283A", borderWidth: 1, borderColor: "#28546C", gap: 9 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <Text style={{ color: "#A9D8E9", fontSize: 9, fontWeight: "900", letterSpacing: 1.3 }}>MARKET DATA CONNECTION</Text>
+          <View style={{ paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, backgroundColor: "#17364A" }}><Text style={{ color: marketFeedState === "live" ? C.green : marketFeedState === "partial" ? "#E8BD70" : marketFeedState === "loading" ? C.cyan : C.red, fontSize: 9, fontWeight: "900" }}>{marketFeedState.toUpperCase()}</Text></View>
+        </View>
+        <Text style={{ color: C.text, fontSize: 22, fontWeight: "900" }}>{quotes.length} <Text style={{ color: "#9AB9C9", fontSize: 13 }}>verified quotes loaded</Text></Text>
+        <Text style={{ color: "#A7C2D2", fontSize: 10, lineHeight: 16 }}>{marketError || "Prices and history are requested from Twelve Data. Missing values are never estimated."}</Text>
+        <TouchableOpacity onPress={() => refreshMarkets()} disabled={marketLoading} style={{ backgroundColor: "#176579", borderRadius: 11, padding: 12, alignItems: "center", opacity: marketLoading ? 0.6 : 1 }}><Text style={{ color: "#E7FAFF", fontSize: 9, fontWeight: "900", letterSpacing: 1 }}>{marketLoading ? "UPDATING…" : "↻  REFRESH WATCHLIST"}</Text></TouchableOpacity>
+        <Text style={{ color: "#86A9B9", fontSize: 9 }}>Last received · {timeLabel(marketFetched)}</Text>
       </View>
-      <View style={{ height: 1, backgroundColor: "#243848" }} />
-      <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Text style={{ color: "#71899A", fontSize: 9 }}>PROVIDER TIMESTAMP</Text><Text style={{ color: "#A9BAC7", fontSize: 9 }}>{timeLabel(q?.quote_time)}</Text></View>
-    </View>; })}
-    <View style={{ padding: 14, borderRadius: 15, backgroundColor: "#171B29", borderWidth: 1, borderColor: "#3A3B54", gap: 6 }}><Text style={{ color: "#C9B8FF", fontSize: 10, fontWeight: "900" }}>DATA INTEGRITY</Text><Text style={{ color: "#AAB6C7", fontSize: 10, lineHeight: 17 }}>Read-only market information. NOVA does not connect to a broker, place trades or invent unavailable prices. This is not financial advice.</Text></View>
-  </ScrollView>;
+      <View style={{ padding: 16, borderRadius: 20, backgroundColor: "#101B30", borderWidth: 1, borderColor: "#343D67", gap: 11 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}><View><Text style={{ color: "#B9A6FF", fontSize: 9, fontWeight: "900", letterSpacing: 1.4 }}>PRICE HISTORY</Text><Text style={{ color: C.text, fontSize: 17, fontWeight: "900", marginTop: 5 }}>{selectedMarketSymbol}</Text><Text style={{ color: C.muted, fontSize: 9, marginTop: 2 }}>{MARKET_NAMES[selectedMarketSymbol]}</Text></View><View style={{ alignItems: "flex-end" }}><Text style={{ color: C.text, fontSize: 18, fontWeight: "900" }}>{selectedQuote?.price ?? "—"}</Text><Text style={{ color: C.muted, fontSize: 9 }}>{selectedQuote?.source ?? "Quote unavailable"}</Text></View></View>
+        <View style={{ flexDirection: "row", gap: 6 }}>{(["1D","1W","1M","3M","1Y"] as ChartRange[]).map(range => <TouchableOpacity key={range} onPress={() => loadMarketSeries(selectedMarketSymbol, range)} style={{ flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: "center", backgroundColor: chartRange === range ? "#45366E" : "#1B2942", borderWidth: 1, borderColor: chartRange === range ? "#9D80E8" : "#34435A" }}><Text style={{ color: chartRange === range ? "#E7DCFF" : "#94A6B9", fontSize: 9, fontWeight: "900" }}>{range}</Text></TouchableOpacity>)}</View>
+        <View style={{ height: 154, backgroundColor: "#0B1426", borderRadius: 13, borderWidth: 1, borderColor: "#293650", overflow: "hidden", justifyContent: "center" }}>
+          {[0,1,2,3].map(row => <View key={row} style={{ position: "absolute", left: 0, right: 0, top: 20 + row * 36, height: 1, backgroundColor: "#202E46" }} />)}
+          {chartSegments.map(segment => <View key={segment.key} style={{ position: "absolute", left: segment.left, top: segment.top, width: segment.width, height: 2.5, borderRadius: 2, backgroundColor: C.cyan, transform: [{ rotate: segment.rotate }] }} />)}
+          {chartLoading ? <View style={{ alignItems: "center", gap: 8 }}><ActivityIndicator color={C.cyan} /><Text style={{ color: C.muted, fontSize: 10 }}>Loading verified history…</Text></View> : chartError ? <Text style={{ color: C.red, fontSize: 10, textAlign: "center", paddingHorizontal: 18 }}>{chartError}</Text> : chartPoints.length ? <View style={{ position: "absolute", bottom: 9, left: 10, right: 10, flexDirection: "row", justifyContent: "space-between" }}><Text style={{ color: "#8193A9", fontSize: 8 }}>{chartPoints[0]?.time ?? ""}</Text><Text style={{ color: "#8193A9", fontSize: 8 }}>{chartPoints[chartPoints.length-1]?.time ?? ""}</Text></View> : <Text style={{ color: C.muted, fontSize: 10, textAlign: "center", paddingHorizontal: 18 }}>Historical data is not available yet. Connect the configured provider to load this chart.</Text>}
+        </View>
+        <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Text style={{ color: C.muted, fontSize: 9 }}>LOW · {chartValues.length ? minValue.toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</Text><Text style={{ color: C.muted, fontSize: 9 }}>HIGH · {chartValues.length ? maxValue.toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</Text></View>
+        <Text style={{ color: "#8D9FB3", fontSize: 8 }}>Source · Twelve Data historical close prices · read-only</Text>
+      </View>
+      <View style={{ gap: 8 }}>
+        <Text style={{ color: "#C0D0DC", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 }}>MARKET CATEGORIES</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7 }}>{(["Watchlist","Forex","Stocks","Crypto","Commodities"] as MarketCategory[]).map(category => <TouchableOpacity key={category} onPress={() => setMarketCategory(category)} style={{ paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, backgroundColor: marketCategory === category ? "#163A4A" : C.panel, borderWidth: 1, borderColor: marketCategory === category ? C.cyan : C.line }}><Text style={{ color: marketCategory === category ? C.cyan : C.muted, fontSize: 9, fontWeight: "900" }}>{category}</Text></TouchableOpacity>)}</View>
+        <TextInput value={marketSearch} onChangeText={setMarketSearch} placeholder="Search instruments…" placeholderTextColor={C.muted} style={{ backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 12, color: C.text, paddingHorizontal: 13, paddingVertical: 12, fontSize: 11 }} />
+      </View>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}><Text style={{ color: "#C0D0DC", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 }}>{marketCategory.toUpperCase()}</Text><Text style={{ color: C.muted, fontSize: 9 }}>{visibleSymbols.length} INSTRUMENTS</Text></View>
+      {visibleSymbols.map((symbol, index) => {
+        const quote = quoteFor(symbol);
+        const inWatchlist = watchlistSymbols.includes(symbol);
+        const accent = index % 3 === 0 ? C.cyan : index % 3 === 1 ? C.violet : "#E8BD70";
+        return <TouchableOpacity key={symbol} onPress={() => { setSelectedMarketSymbol(symbol); loadMarketSeries(symbol, chartRange); refreshMarkets([symbol]); }} style={{ padding: 14, borderRadius: 16, backgroundColor: C.panel, borderWidth: 1, borderColor: selectedMarketSymbol === symbol ? "#52618A" : C.line, gap: 10 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}><View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "#172A40", alignItems: "center", justifyContent: "center" }}><Text style={{ color: accent, fontSize: 12, fontWeight: "900" }}>{symbol.split("/")[0].slice(0,2) || symbol.slice(0,2)}</Text></View><View><Text style={{ color: C.text, fontSize: 14, fontWeight: "900" }}>{symbol}</Text><Text style={{ color: C.muted, fontSize: 9, marginTop: 3 }}>{MARKET_NAMES[symbol]}</Text></View></View>
+            <View style={{ alignItems: "flex-end" }}><Text style={{ color: quote ? C.text : C.muted, fontSize: 16, fontWeight: "900" }}>{quote?.price ?? "—"}</Text><Text style={{ color: quote?.percent_change && Number(quote.percent_change) >= 0 ? C.green : quote?.percent_change ? C.red : C.muted, fontSize: 9, marginTop: 3 }}>{quote?.percent_change ? `${Number(quote.percent_change) > 0 ? "+" : ""}${quote.percent_change}%` : quote ? "Change unavailable" : "Quote unavailable"}</Text></View>
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}><Text style={{ color: "#71899A", fontSize: 8 }}>SOURCE · {quote?.source ?? "NOT RETURNED"}</Text><TouchableOpacity onPress={() => toggleWatchlist(symbol)} style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, backgroundColor: inWatchlist ? "#352A48" : "#173747" }}><Text style={{ color: inWatchlist ? "#D4BFFF" : C.cyan, fontSize: 8, fontWeight: "900" }}>{inWatchlist ? "− REMOVE" : "+ WATCHLIST"}</Text></TouchableOpacity></View>
+          <Text style={{ color: "#8A9EAF", fontSize: 8 }}>Provider time · {timeLabel(quote?.quote_time)}</Text>
+        </TouchableOpacity>;
+      })}
+      {visibleSymbols.length === 0 ? <Text style={{ color: C.muted, fontSize: 11, padding: 16 }}>No supported instruments match this search.</Text> : null}
+      <View style={{ padding: 14, borderRadius: 15, backgroundColor: "#171B29", borderWidth: 1, borderColor: "#3A3B54", gap: 6 }}><Text style={{ color: "#C9B8FF", fontSize: 10, fontWeight: "900" }}>DATA INTEGRITY</Text><Text style={{ color: "#AAB6C7", fontSize: 10, lineHeight: 17 }}>Read-only market information. Quotes and chart history are retrieved from Twelve Data when configured. No broker connection, order execution or estimated prices are provided.</Text></View>
+    </ScrollView>;
+  };
 
   const renderConnections = () => <ScrollView contentContainerStyle={styles.content}>
     <Heading title="Connections" subtitle="Manage NOVA's service status and safe integrations" />
