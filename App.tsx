@@ -171,7 +171,7 @@ export default function App() {
         <View style={styles.dashLogo}><Image source={require("./assets/nova-icon.png")} style={styles.dashLogoImage} /></View>
         <View><Text style={styles.dashBrand}>NOVA <Text style={styles.cyan}>2.1</Text></Text><Text style={styles.dashSub}>PERSONAL INTELLIGENCE</Text></View>
       </View>
-      <View style={[styles.dashStatus,{backgroundColor:backendState==="ready"?"#102A25":"#2B2028",borderColor:backendState==="ready"?"#245443":"#65404A"}]}><View style={[styles.dot,{backgroundColor:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]} /><Text style={[styles.dashStatusText,{color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"CORE ONLINE":backendState==="checking"?"CHECKING":"CORE OFFLINE"}</Text></View>
+      <View style={[styles.dashStatus,{backgroundColor:backendState==="ready"?"#102A25":"#2B2028",borderColor:backendState==="ready"?"#245443":"#65404A"}]}><View style={[styles.dot,{backgroundColor:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]} /><Text style={[styles.dashStatusText,{color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"CORE CONFIGURED":backendState==="checking"?"CHECKING":"CORE NOT READY"}</Text></View>
     </View>
     <View style={styles.dashGreeting}>
       <Text style={styles.dashEyebrow}>YOUR PERSONAL INTELLIGENCE HUB</Text>
@@ -184,8 +184,8 @@ export default function App() {
     <View style={styles.dashStats}>
       <TouchableOpacity style={styles.dashStatCard} onPress={() => setTab("Intelligence")}>
         <View style={styles.dashStatTop}><Text style={styles.dashStatLabel}>NOVA CORE</Text><Text style={styles.dashStatIcon}>✳</Text></View>
-        <Text style={[styles.dashStatValue,{fontSize:18,color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"ONLINE":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT SET":"OFFLINE"}</Text>
-        <Text style={styles.dashStatFoot}>AI backend health check</Text>
+        <Text style={[styles.dashStatValue,{fontSize:18,color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"CONFIGURED":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT SET":"UNAVAILABLE"}</Text>
+        <Text style={styles.dashStatFoot}>Backend configuration check</Text>
         <Text style={styles.dashStatFoot}>Verified · {timeLabel(backendCheckedAt)}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.dashStatCard} onPress={() => setTab("Markets")}>
@@ -320,7 +320,7 @@ export default function App() {
         </TouchableOpacity>;
       })}
       {visibleSymbols.length === 0 ? <Text style={{ color: C.muted, fontSize: 11, padding: 16 }}>No supported instruments match this search.</Text> : null}
-      <View style={{ padding: 14, borderRadius: 15, backgroundColor: "#171B29", borderWidth: 1, borderColor: "#3A3B54", gap: 6 }}><Text style={{ color: "#C9B8FF", fontSize: 10, fontWeight: "900" }}>DATA INTEGRITY</Text><Text style={{ color: "#AAB6C7", fontSize: 10, lineHeight: 17 }}>Read-only market information. Quotes and chart history are retrieved from Twelve Data when configured. No broker connection, order execution or estimated prices are provided.</Text></View>
+      <View style={{ padding: 14, borderRadius: 15, backgroundColor: "#171B29", borderWidth: 1, borderColor: "#3A3B54", gap: 6 }}><Text style={{ color: "#C9B8FF", fontSize: 10, fontWeight: "900" }}>DATA INTEGRITY</Text><Text style={{ color: "#AAB6C7", fontSize: 10, lineHeight: 17 }}>Read-only market information. Quotes and chart history come from Twelve Data when configured; coverage depends on your provider plan. The supported instrument list is limited, and watchlist edits last for this app session. No broker connection, order execution or estimated prices are provided.</Text></View>
     </ScrollView>;
   };
 
@@ -338,7 +338,7 @@ export default function App() {
       <Button label="OPEN MARKETS" onPress={()=>setTab("Markets")} />
     </Panel>
     <Panel>
-      <View style={styles.rowBetween}><Text style={styles.panelTitle}>AI provider</Text><Text style={[styles.statusTag,{color:C.cyan}]}>{backendState==="ready"?"CONNECTED":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT CONFIGURED":"UNAVAILABLE"}</Text></View>
+      <View style={styles.rowBetween}><Text style={styles.panelTitle}>AI provider</Text><Text style={[styles.statusTag,{color:C.cyan}]}>{backendState==="ready"?"CONFIGURED":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT CONFIGURED":"UNAVAILABLE"}</Text></View>
       <Text style={styles.body}>NOVA's AI requests are routed through the protected backend. Provider credentials must remain server-side and must never be stored in the mobile app.</Text>
     </Panel>
     <Panel>
