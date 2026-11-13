@@ -262,12 +262,12 @@ export default function App() {
     const minValue = chartValues.length ? Math.min(...chartValues) : 0;
     const maxValue = chartValues.length ? Math.max(...chartValues) : 0;
     const chartSegments = chartPoints.slice(-24).map((point, index, points) => {
-      if (index === points.length - 1 || maxValue === minValue) return null;
+      if (index === points.length - 1) return null;
       const next = points[index + 1];
       const x1 = index * (280 / Math.max(points.length - 1, 1));
       const x2 = (index + 1) * (280 / Math.max(points.length - 1, 1));
-      const y1 = 126 - ((point.close - minValue) / (maxValue - minValue)) * 108;
-      const y2 = 126 - ((next.close - minValue) / (maxValue - minValue)) * 108;
+      const y1 = maxValue === minValue ? 72 : 126 - ((point.close - minValue) / (maxValue - minValue)) * 108;
+      const y2 = maxValue === minValue ? 72 : 126 - ((next.close - minValue) / (maxValue - minValue)) * 108;
       const dx = x2 - x1;
       const dy = y2 - y1;
       return { key: `${point.time}-${index}`, left: x1, top: (y1 + y2) / 2, width: Math.sqrt(dx * dx + dy * dy), rotate: `${Math.atan2(dy, dx) * 180 / Math.PI}deg` };
