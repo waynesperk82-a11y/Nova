@@ -213,14 +213,14 @@ export default function App() {
     </View>
     <View style={styles.dashSectionHead}><Text style={styles.dashSectionTitle}>SYSTEM DETAILS</Text><Text style={styles.dashSectionMeta}>NO SIMULATED STATUS</Text></View>
     <View style={styles.dashSystemCard}>
-      <View style={styles.dashSystemRow}><View style={styles.dashSystemIcon}><Text style={styles.dashToolIcon}>⌘</Text></View><View style={{flex:1}}><Text style={styles.dashSystemTitle}>NOVA Core API</Text><Text style={styles.dashSystemDesc}>GET /api/core/status · advisory backend</Text></View><View style={[styles.dashSystemBadge,{borderColor:backendState==="ready"?"#28664F":backendState==="checking"?"#276477":"#74404B"}]}><Text style={[styles.dashSystemBadgeText,{color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"READY":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT SET":"UNAVAILABLE"}</Text></View></View>
+      <View style={styles.dashSystemRow}><View style={styles.dashSystemIcon}><Text style={styles.dashToolIcon}>⌘</Text></View><View style={{flex:1}}><Text style={styles.dashSystemTitle}>NOVA Core API</Text><Text style={styles.dashSystemDesc}>GET /api/core/status · advisory backend</Text></View><View style={[styles.dashSystemBadge,{borderColor:backendState==="ready"?"#28664F":backendState==="checking"?"#276477":"#74404B"}]}><Text style={[styles.dashSystemBadgeText,{color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"CONFIGURED":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT SET":"UNAVAILABLE"}</Text></View></View>
       <View style={styles.dashSystemDivider} />
       <View style={styles.dashSystemRow}><View style={styles.dashSystemIcon}><Text style={styles.dashToolIcon}>⌁</Text></View><View style={{flex:1}}><Text style={styles.dashSystemTitle}>Market data · Twelve Data</Text><Text style={styles.dashSystemDesc}>Read-only provider quote service</Text></View><View style={[styles.dashSystemBadge,{borderColor:marketFeedState==="live"?"#28664F":marketFeedState==="loading"?"#276477":"#74404B"}]}><Text style={[styles.dashSystemBadgeText,{color:marketFeedState==="live"?C.green:marketFeedState==="loading"?C.cyan:C.red}]}>{marketFeedState==="live"?"CONNECTED":marketFeedState==="loading"?"CHECKING":marketFeedState.toUpperCase()}</Text></View></View>
       <View style={styles.dashSystemDivider} />
       <Text style={styles.dashSystemFoot}>Core last checked · {timeLabel(backendCheckedAt)}</Text>
       <Text style={styles.dashSystemFoot}>Market last fetched · {timeLabel(marketFetched)}</Text>
     </View>
-    <Text style={styles.dashDisclaimer}>Workspace tasks and practice records are stored locally in this prototype. No broker is connected and no live orders can be placed.</Text>
+    <Text style={styles.dashDisclaimer}>Workspace tasks and practice records stay in the current app session only. No broker is connected and no live orders can be placed.</Text>
   </ScrollView>;
 
   const renderIntelligence = () => <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={8}>
@@ -332,13 +332,13 @@ export default function App() {
       <Text style={styles.body}>NOVA shows which services are configured, what data they provide and what permissions they have. Never paste API keys or passwords into chat or the app UI.</Text>
     </Panel>
     <Panel>
-      <View style={styles.rowBetween}><Text style={styles.panelTitle}>Market data · Twelve Data</Text><Text style={[styles.statusTag,{color:marketFeedState==="live"?C.green:marketFeedState==="partial"?"#E8BD70":C.red}]}>{marketFeedState.toUpperCase()}</Text></View>
+      <View style={styles.rowBetween}><Text style={styles.panelTitle}>Market data · Twelve Data</Text><Text style={[styles.statusTag,{color:marketFeedState==="live"?C.green:marketFeedState==="partial"?"#E8BD70":C.red}]}>{marketFeedState==="live"?"CONNECTED":marketFeedState.toUpperCase()}</Text></View>
       <Text style={styles.body}>Read-only quotes for the NOVA watchlist. Market data access is separate from any broker account.</Text>
       <Text style={styles.mutedSmall}>Last successful fetch: {timeLabel(marketFetched)}</Text>
       <Button label="OPEN MARKETS" onPress={()=>setTab("Markets")} />
     </Panel>
     <Panel>
-      <View style={styles.rowBetween}><Text style={styles.panelTitle}>AI provider</Text><Text style={[styles.statusTag,{color:C.cyan}]}>{backendState==="ready"?"CONFIGURED":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT CONFIGURED":"UNAVAILABLE"}</Text></View>
+      <View style={styles.rowBetween}><Text style={styles.panelTitle}>AI provider</Text><Text style={[styles.statusTag,{color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"CONFIGURED":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT CONFIGURED":"UNAVAILABLE"}</Text></View>
       <Text style={styles.body}>NOVA's AI requests are routed through the protected backend. Provider credentials must remain server-side and must never be stored in the mobile app.</Text>
     </Panel>
     <Panel>
