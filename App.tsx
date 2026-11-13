@@ -6,7 +6,10 @@ import {
 } from "react-native";
 
 type Tab = "Home" | "Intelligence" | "Markets" | "Connections" | "Practice" | "Workspace" | "More";
-type SymbolCode = "EUR/USD" | "GBP/USD" | "XAU/USD";
+type SymbolCode = "EUR/USD" | "GBP/USD" | "USD/JPY" | "USD/CHF" | "XAU/USD" | "XAG/USD" | "AAPL" | "MSFT" | "NVDA" | "GOOGL" | "AMZN" | "TSLA" | "BTC/USD" | "ETH/USD";
+type MarketCategory = "Watchlist" | "Forex" | "Stocks" | "Crypto" | "Commodities";
+type ChartRange = "1D" | "1W" | "1M" | "3M" | "1Y";
+type MarketPoint = { time: string | null; close: number };
 type Quote = { symbol: SymbolCode; price: string; quote_time: string | null; source: string; currency: string | null };
 type MarketResponse = { data: Quote[]; status: string; fetched_at: string; errors?: string[] };
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -14,7 +17,21 @@ type Task = { id: number; title: string; done: boolean };
 type PracticeOrder = { id: number; symbol: SymbolCode; side: "BUY" | "SELL"; units: number; price: number; createdAt: string };
 
 const API_BASE = process.env.EXPO_PUBLIC_NOVA_API_URL?.replace(/\/$/, "");
-const SYMBOLS: SymbolCode[] = ["EUR/USD", "GBP/USD", "XAU/USD"];
+const SYMBOLS: SymbolCode[] = ["EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "XAU/USD", "XAG/USD", "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "TSLA", "BTC/USD", "ETH/USD"];
+const MARKET_GROUPS: Record<MarketCategory, SymbolCode[]> = {
+  Watchlist: ["EUR/USD", "GBP/USD", "XAU/USD"],
+  Forex: ["EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF"],
+  Stocks: ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "TSLA"],
+  Crypto: ["BTC/USD", "ETH/USD"],
+  Commodities: ["XAU/USD", "XAG/USD"],
+};
+const MARKET_NAMES: Record<SymbolCode, string> = {
+  "EUR/USD": "Euro / US Dollar", "GBP/USD": "British Pound / US Dollar",
+  "USD/JPY": "US Dollar / Japanese Yen", "USD/CHF": "US Dollar / Swiss Franc",
+  "XAU/USD": "Gold / US Dollar", "XAG/USD": "Silver / US Dollar",
+  AAPL: "Apple", MSFT: "Microsoft", NVDA: "NVIDIA", GOOGL: "Alphabet",
+  AMZN: "Amazon", TSLA: "Tesla", "BTC/USD": "Bitcoin / US Dollar", "ETH/USD": "Ethereum / US Dollar",
+};
 const C = { bg: "#050A12", panel: "#0C1723", panel2: "#112333", line: "#1C3545", text: "#F2FAFF", muted: "#8198A8", cyan: "#48E5D0", violet: "#A879FF", green: "#65E7B1", red: "#FF7D91", pink: "#F36CB7" };
 
 function timeLabel(value?: string | null) {
@@ -39,6 +56,13 @@ export default function App() {
   const [marketError, setMarketError] = useState<string | null>(null);
   const [marketFetched, setMarketFetched] = useState<string | null>(null);
   const [marketFeedState, setMarketFeedState] = useState<"loading" | "live" | "partial" | "offline">("loading");
+  const [watchlistSymbols, setWatchlistSymbols] = useState<SymbolCode[]>(["EUR/USD", "GBP/USD", "XAU/USD"]);
+  const [marketCategory, setMarketCategory] = useState<MarketCategory>("Watchlist");
+  const [selectedMarketSymbol, setSelectedMarketSymbol] = useState<SymbolCode>("EUR/USD");
+  const [chartRange, setChartRange] = useState<ChartRange>("1M");
+  const [chartPoints, setChartPoints] = useState<MarketPoint[]>([]);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [chartError, setChartError] = useState<string | null>(null);
   const [backendState, setBackendState] = useState<"checking" | "ready" | "unhealthy" | "unknown">("checking");
   const [backendCheckedAt, setBackendCheckedAt] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
