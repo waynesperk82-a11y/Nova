@@ -80,23 +80,44 @@ export default function App() {
   const [practiceOrders, setPracticeOrders] = useState<PracticeOrder[]>([]);
   const [practiceNotice, setPracticeNotice] = useState<string | null>(null);
 
-  const refreshMarkets = useCallback(async () => {
-    if (!API_BASE) { setMarketError("Backend URL is not configured. Set EXPO_PUBLIC_NOVA_API_URL in the Expo environment."); setQuotes([]); setMarketFeedState("offline"); return; }
+  const refreshMarkets = useCallback(async (requestedSymbols: SymbolCode[] = watchlistSymbols) => {
+    if (!API_BASE) { setMarketError("Backend URL is not configured. Set EXPO_PUBLIC_NOVA_API_URL in the Expo environment."); setMarketFeedState("offline"); return; }
     setMarketLoading(true); setMarketError(null); setMarketFeedState("loading");
     try {
-      const response = await fetch(`${API_BASE}/api/markets`);
+      const response = await fetch(`${API_BASE}/api/markets?symbols=${encodeURIComponent(requestedSymbols.join(","))}`);
       const body = await response.json();
       if (!response.ok) throw new Error(body.detail || `Market API returned HTTP ${response.status}`);
       const result = body as MarketResponse;
       if (!Array.isArray(result.data) || result.data.length === 0) throw new Error("No verified provider quotes were returned.");
-      setQuotes(result.data); setMarketFetched(result.fetched_at || new Date().toISOString());
+      setQuotes(current => [...current.filter(q => !requestedSymbols.includes(q.symbol)), ...result.data]);
+      setMarketFetched(result.fetched_at || new Date().toISOString());
       setMarketFeedState(result.status === "partial" ? "partial" : "live");
       if (result.status === "partial") setMarketError((result.errors || []).join(" · ") || "Some symbols were unavailable.");
-    } catch (e) { setQuotes([]); setMarketFeedState("offline"); setMarketError(e instanceof Error ? e.message : "Could not connect to the market-data service."); }
+    } catch (e) { setMarketFeedState("offline"); setMarketError(e instanceof Error ? e.message : "Could not connect to the market-data service."); }
     finally { setMarketLoading(false); }
-  }, []);
+  }, [watchlistSymbols]);
 
-  useEffect(() => { refreshMarkets(); }, [refreshMarkets]);
+  useEffect(() => { refreshMarkets(watchlistSymbols); }, [refreshMarkets, watchlistSymbols]);
+
+  const loadMarketSeries = async (symbol: SymbolCode, range: ChartRange = chartRange) => {
+    setSelectedMarketSymbol(symbol);
+    setChartRange(range);
+    setChartLoading(true);
+    setChartError(null);
+    if (!API_BASE) { setChartPoints([]); setChartError("Backend URL is not configured."); setChartLoading(false); return; }
+    try {
+      const response = await fetch(`${API_BASE}/api/markets/series?symbol=${encodeURIComponent(symbol)}&range=${range}`);
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.detail || `Chart service returned HTTP ${response.status}`);
+      if (!Array.isArray(body.data) || body.data.length === 0) throw new Error("No historical prices were returned by the provider.");
+      setChartPoints(body.data);
+    } catch (error) {
+      setChartPoints([]);
+      setChartError(error instanceof Error ? error.message : "Historical market data is unavailable.");
+    } finally { setChartLoading(false); }
+  };
+
+  useEffect(() => { loadMarketSeries("EUR/USD", "1M"); }, []);
 
   const refreshBackend = useCallback(async () => {
     if (!API_BASE) { setBackendState("unknown"); return; }
