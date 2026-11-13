@@ -138,6 +138,8 @@ async def markets(symbols: str | None = Query(default=None, max_length=500)) -> 
                     "quote_time": payload.get("datetime") or payload.get("timestamp"),
                     "source": "Twelve Data",
                     "currency": payload.get("currency"),
+                    "change": payload.get("change"),
+                    "percent_change": payload.get("percent_change"),
                 })
             except (httpx.HTTPError, ValueError):
                 errors.append(f"{symbol}: provider request failed")
