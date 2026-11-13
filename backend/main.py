@@ -16,7 +16,7 @@ AI_BASE_URL = os.getenv("NOVA_AI_BASE_URL", "https://api.openai.com/v1").rstrip(
 AI_MODEL = os.getenv("NOVA_AI_MODEL", "gpt-4o-mini").strip()
 SYMBOLS = ("EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "XAU/USD", "XAG/USD", "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "TSLA", "BTC/USD", "ETH/USD")
 DEFAULT_SYMBOLS = ("EUR/USD", "GBP/USD", "XAU/USD")
-SERIES_RANGES = {"1D": ("15min", 26), "1W": ("1h", 35), "1M": ("1day", 30), "3M": ("1day", 90), "1Y": ("1day", 252)}
+SERIES_RANGES = {"1D": ("15min", 26), "1W": ("1h", 168), "1M": ("1day", 30), "3M": ("1day", 90), "1Y": ("1day", 252)}
 
 cors_origins = [
     origin.strip()
