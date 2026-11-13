@@ -171,54 +171,56 @@ export default function App() {
         <View style={styles.dashLogo}><Image source={require("./assets/nova-icon.png")} style={styles.dashLogoImage} /></View>
         <View><Text style={styles.dashBrand}>NOVA <Text style={styles.cyan}>2.1</Text></Text><Text style={styles.dashSub}>PERSONAL INTELLIGENCE</Text></View>
       </View>
-      <View style={styles.dashStatus}><View style={styles.dot} /><Text style={styles.dashStatusText}>SYSTEM READY</Text></View>
+      <View style={[styles.dashStatus,{backgroundColor:backendState==="ready"?"#102A25":"#2B2028",borderColor:backendState==="ready"?"#245443":"#65404A"}]}><View style={[styles.dot,{backgroundColor:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]} /><Text style={[styles.dashStatusText,{color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"CORE ONLINE":backendState==="checking"?"CHECKING":"CORE OFFLINE"}</Text></View>
     </View>
-
     <View style={styles.dashGreeting}>
-      <Text style={styles.dashEyebrow}>YOUR INTELLIGENCE HUB</Text>
-      <Text style={styles.dashHeadline}>Think beyond{ "\n" }the obvious.</Text>
-      <Text style={styles.dashIntro}>One workspace for ideas, research, planning and better decisions.</Text>
-      <TouchableOpacity style={styles.dashPrimary} onPress={() => setTab("Intelligence")}>
-        <Text style={styles.dashPrimaryText}>START THINKING</Text><Text style={styles.dashArrow}>↗</Text>
-      </TouchableOpacity>
+      <Text style={styles.dashEyebrow}>YOUR PERSONAL INTELLIGENCE HUB</Text>
+      <Text style={styles.dashHeadline}>Think clearly.{ "\n" }Build boldly.</Text>
+      <Text style={styles.dashIntro}>Research, ideas, markets and projects in one focused workspace.</Text>
+      <TouchableOpacity style={styles.dashPrimary} onPress={() => setTab("Intelligence")}><Text style={styles.dashPrimaryText}>OPEN INTELLIGENCE</Text><Text style={styles.dashArrow}>↗</Text></TouchableOpacity>
       <View pointerEvents="none" style={styles.dashOrb}><View style={styles.dashOrbInner}><Text style={styles.dashOrbGlyph}>N</Text></View></View>
     </View>
-
-    <View style={styles.dashSectionHead}><Text style={styles.dashSectionTitle}>LIVE OVERVIEW</Text><Text style={styles.dashSectionMeta}>UPDATED IN REAL TIME</Text></View>
+    <View style={styles.dashSectionHead}><Text style={styles.dashSectionTitle}>LIVE SERVICE OVERVIEW</Text><Text style={styles.dashSectionMeta}>VERIFIED STATUS</Text></View>
     <View style={styles.dashStats}>
-      <TouchableOpacity style={styles.dashStatCard} onPress={() => setTab("Workspace")}>
-        <View style={styles.dashStatTop}><Text style={styles.dashStatLabel}>WORKSPACE</Text><Text style={styles.dashStatIcon}>▤</Text></View>
-        <Text style={styles.dashStatValue}>{completedTasks}<Text style={styles.dashStatTotal}>/{tasks.length}</Text></Text>
-        <Text style={styles.dashStatFoot}>Tasks completed</Text>
-        <View style={styles.dashMiniTrack}><View style={[styles.dashMiniFill,{width:tasks.length?String(completedTasks/tasks.length*100)+"%":"0%"}]} /></View>
+      <TouchableOpacity style={styles.dashStatCard} onPress={() => setTab("Intelligence")}>
+        <View style={styles.dashStatTop}><Text style={styles.dashStatLabel}>NOVA CORE</Text><Text style={styles.dashStatIcon}>✳</Text></View>
+        <Text style={[styles.dashStatValue,{fontSize:18,color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"ONLINE":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT SET":"OFFLINE"}</Text>
+        <Text style={styles.dashStatFoot}>AI backend health check</Text>
+        <Text style={styles.dashStatFoot}>Verified · {timeLabel(backendCheckedAt)}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.dashStatCard} onPress={() => setTab("Markets")}>
-        <View style={styles.dashStatTop}><Text style={styles.dashStatLabel}>MARKET FEED</Text><Text style={styles.dashStatIcon}>⌁</Text></View>
-        <Text style={[styles.dashStatValue,{fontSize:19,color:marketFeedState==="live"?C.green:marketFeedState==="partial"?"#E8BD70":C.text}]}>{marketFeedState==="live"?"LIVE":marketFeedState==="partial"?"PARTIAL":marketFeedState==="loading"?"SYNCING":"OFFLINE"}</Text>
-        <Text style={styles.dashStatFoot}>Verified provider data</Text>
-        <View style={styles.dashFeedLine}><View style={[styles.dashFeedDot,{backgroundColor:marketFeedState==="live"?C.green:marketFeedState==="partial"?"#E8BD70":C.muted}]} /><Text style={styles.dashFeedText}>{quotes.length} instruments available</Text></View>
+        <View style={styles.dashStatTop}><Text style={styles.dashStatLabel}>MARKET DATA</Text><Text style={styles.dashStatIcon}>⌁</Text></View>
+        <Text style={[styles.dashStatValue,{fontSize:18,color:marketFeedState==="live"?C.green:marketFeedState==="partial"?"#E8BD70":marketFeedState==="loading"?C.cyan:C.red}]}>{marketFeedState==="live"?"LIVE":marketFeedState==="partial"?"PARTIAL":marketFeedState==="loading"?"CHECKING":"OFFLINE"}</Text>
+        <Text style={styles.dashStatFoot}>{quotes.length} verified quotes currently loaded</Text>
+        <Text style={styles.dashStatFoot}>Source · Twelve Data</Text>
       </TouchableOpacity>
     </View>
-
-    <View style={styles.dashSectionHead}><Text style={styles.dashSectionTitle}>EXPLORE NOVA</Text><Text style={styles.dashSectionMeta}>YOUR TOOLS</Text></View>
+    <View style={styles.dashSectionHead}><Text style={styles.dashSectionTitle}>YOUR NOVA WORKSPACE</Text><Text style={styles.dashSectionMeta}>OPEN A MODULE</Text></View>
     <TouchableOpacity style={styles.dashFeature} onPress={() => setTab("Intelligence")}>
       <View style={styles.dashFeatureIcon}><Text style={styles.dashFeatureGlyph}>✳</Text></View>
-      <View style={styles.dashFeatureCopy}><Text style={styles.dashFeatureTitle}>Intelligence</Text><Text style={styles.dashFeatureDesc}>Ask, analyse, research and turn complex ideas into clear plans.</Text></View>
+      <View style={styles.dashFeatureCopy}><Text style={styles.dashFeatureTitle}>Intelligence</Text><Text style={styles.dashFeatureDesc}>Ask questions, develop ideas and work through complex problems using the connected AI service.</Text></View>
       <Text style={styles.dashFeatureArrow}>↗</Text>
     </TouchableOpacity>
     <View style={styles.dashToolGrid}>
-      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Markets")}><Text style={styles.dashToolIcon}>⌁</Text><Text style={styles.dashToolTitle}>Markets</Text><Text style={styles.dashToolDesc}>Read-only data</Text></TouchableOpacity>
-      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Workspace")}><Text style={styles.dashToolIcon}>▤</Text><Text style={styles.dashToolTitle}>Workspace</Text><Text style={styles.dashToolDesc}>Projects & tasks</Text></TouchableOpacity>
-      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Connections")}><Text style={styles.dashToolIcon}>⌘</Text><Text style={styles.dashToolTitle}>Connections</Text><Text style={styles.dashToolDesc}>Services & status</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Markets")}><Text style={styles.dashToolIcon}>⌁</Text><Text style={styles.dashToolTitle}>Markets</Text><Text style={styles.dashToolDesc}>Provider-backed data</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Workspace")}><Text style={styles.dashToolIcon}>▤</Text><Text style={styles.dashToolTitle}>Workspace</Text><Text style={styles.dashToolDesc}>Local project tasks</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Connections")}><Text style={styles.dashToolIcon}>⌘</Text><Text style={styles.dashToolTitle}>Connections</Text><Text style={styles.dashToolDesc}>Real service setup</Text></TouchableOpacity>
     </View>
-
-    <View style={styles.dashSectionHead}><Text style={styles.dashSectionTitle}>SYSTEM STATUS</Text><TouchableOpacity onPress={refreshBackend}><Text style={styles.dashSectionAction}>REFRESH ↻</Text></TouchableOpacity></View>
+    <View style={styles.dashToolGrid}>
+      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Practice")}><Text style={styles.dashToolIcon}>◈</Text><Text style={styles.dashToolTitle}>Practice</Text><Text style={styles.dashToolDesc}>Local learning simulator</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("More")}><Text style={styles.dashToolIcon}>⋯</Text><Text style={styles.dashToolTitle}>More tools</Text><Text style={styles.dashToolDesc}>App controls & modules</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.dashToolCard} onPress={refreshBackend}><Text style={styles.dashToolIcon}>↻</Text><Text style={styles.dashToolTitle}>Check core</Text><Text style={styles.dashToolDesc}>Run live health check</Text></TouchableOpacity>
+    </View>
+    <View style={styles.dashSectionHead}><Text style={styles.dashSectionTitle}>SYSTEM DETAILS</Text><Text style={styles.dashSectionMeta}>NO SIMULATED STATUS</Text></View>
     <View style={styles.dashSystemCard}>
-      <View style={styles.dashSystemRow}><View style={styles.dashSystemIcon}><Text style={styles.dashToolIcon}>⌘</Text></View><View style={{flex:1}}><Text style={styles.dashSystemTitle}>NOVA Core API</Text><Text style={styles.dashSystemDesc}>Secure backend · read-only health check</Text></View><View style={[styles.dashSystemBadge,{borderColor:backendState==="ready"?"#28664F":backendState==="checking"?"#276477":"#74404B"}]}><Text style={[styles.dashSystemBadgeText,{color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"ONLINE":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT SET":"OFFLINE"}</Text></View></View>
+      <View style={styles.dashSystemRow}><View style={styles.dashSystemIcon}><Text style={styles.dashToolIcon}>⌘</Text></View><View style={{flex:1}}><Text style={styles.dashSystemTitle}>NOVA Core API</Text><Text style={styles.dashSystemDesc}>GET /api/core/status · advisory backend</Text></View><View style={[styles.dashSystemBadge,{borderColor:backendState==="ready"?"#28664F":backendState==="checking"?"#276477":"#74404B"}]}><Text style={[styles.dashSystemBadgeText,{color:backendState==="ready"?C.green:backendState==="checking"?C.cyan:C.red}]}>{backendState==="ready"?"READY":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT SET":"UNAVAILABLE"}</Text></View></View>
       <View style={styles.dashSystemDivider} />
-      <Text style={styles.dashSystemFoot}>Last verified · {timeLabel(backendCheckedAt)}</Text>
+      <View style={styles.dashSystemRow}><View style={styles.dashSystemIcon}><Text style={styles.dashToolIcon}>⌁</Text></View><View style={{flex:1}}><Text style={styles.dashSystemTitle}>Market data · Twelve Data</Text><Text style={styles.dashSystemDesc}>Read-only provider quote service</Text></View><View style={[styles.dashSystemBadge,{borderColor:marketFeedState==="live"?"#28664F":marketFeedState==="loading"?"#276477":"#74404B"}]}><Text style={[styles.dashSystemBadgeText,{color:marketFeedState==="live"?C.green:marketFeedState==="loading"?C.cyan:C.red}]}>{marketFeedState==="live"?"LIVE":marketFeedState==="loading"?"CHECKING":marketFeedState.toUpperCase()}</Text></View></View>
+      <View style={styles.dashSystemDivider} />
+      <Text style={styles.dashSystemFoot}>Core last checked · {timeLabel(backendCheckedAt)}</Text>
+      <Text style={styles.dashSystemFoot}>Market last fetched · {timeLabel(marketFetched)}</Text>
     </View>
-    <Text style={styles.dashDisclaimer}>NOVA is an advisory prototype. Important actions remain under your control.</Text>
+    <Text style={styles.dashDisclaimer}>Workspace tasks and practice records are stored locally in this prototype. No broker is connected and no live orders can be placed.</Text>
   </ScrollView>;
 
   const renderIntelligence = () => <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={8}>
