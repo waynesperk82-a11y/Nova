@@ -4,16 +4,19 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 TWELVE_DATA_URL = "https://api.twelvedata.com/quote"
+TWELVE_DATA_SERIES_URL = "https://api.twelvedata.com/time_series"
 TWELVE_DATA_API_KEY = os.getenv("TWELVE_DATA_API_KEY", "").strip()
 AI_API_KEY = os.getenv("NOVA_AI_API_KEY", "").strip()
 AI_BASE_URL = os.getenv("NOVA_AI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 AI_MODEL = os.getenv("NOVA_AI_MODEL", "gpt-4o-mini").strip()
-SYMBOLS = ("EUR/USD", "GBP/USD", "XAU/USD")
+SYMBOLS = ("EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "XAU/USD", "XAG/USD", "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "TSLA", "BTC/USD", "ETH/USD")
+DEFAULT_SYMBOLS = ("EUR/USD", "GBP/USD", "XAU/USD")
+SERIES_RANGES = {"1D": ("15min", 26), "1W": ("1h", 35), "1M": ("1day", 30), "3M": ("1day", 90), "1Y": ("1day", 252)}
 
 cors_origins = [
     origin.strip()
@@ -87,18 +90,22 @@ async def market_status() -> dict[str, Any]:
 
 
 @app.get("/api/markets")
-async def markets() -> dict[str, Any]:
+async def markets(symbols: str | None = Query(default=None, max_length=500)) -> dict[str, Any]:
     if not TWELVE_DATA_API_KEY:
         raise HTTPException(
             status_code=503,
             detail="Market-data provider is not configured on the server. No sample prices are provided.",
         )
 
+    requested = [item.strip().upper() for item in symbols.split(",")] if symbols else list(DEFAULT_SYMBOLS)
+    requested = list(dict.fromkeys(requested))
+    if not requested or len(requested) > 14 or any(item not in SYMBOLS for item in requested):
+        raise HTTPException(status_code=400, detail="One or more requested symbols are not supported.")
     quotes: list[dict[str, Any]] = []
     errors: list[str] = []
 
     async with httpx.AsyncClient(timeout=15.0) as client:
-        for symbol in SYMBOLS:
+        for symbol in requested:
             try:
                 response = await client.get(
                     TWELVE_DATA_URL,
