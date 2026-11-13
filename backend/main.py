@@ -109,8 +109,7 @@ async def markets(symbols: str | None = Query(default=None, max_length=500)) -> 
             try:
                 response = await client.get(
                     TWELVE_DATA_URL,
-                    params={"symbol": symbol},
-                    headers={"Authorization": f"apikey {TWELVE_DATA_API_KEY}"},
+                    params={"symbol": symbol, "apikey": TWELVE_DATA_API_KEY},
                 )
                 response.raise_for_status()
                 payload = response.json()
@@ -176,8 +175,7 @@ async def market_series(
         async with httpx.AsyncClient(timeout=20.0) as client:
             response = await client.get(
                 TWELVE_DATA_SERIES_URL,
-                params={"symbol": normalized, "interval": interval, "outputsize": outputsize, "order": "ASC"},
-                headers={"Authorization": f"apikey {TWELVE_DATA_API_KEY}"},
+                params={"symbol": normalized, "interval": interval, "outputsize": outputsize, "order": "ASC", "apikey": TWELVE_DATA_API_KEY},
             )
             response.raise_for_status()
             payload = response.json()
