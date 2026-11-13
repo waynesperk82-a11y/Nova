@@ -282,7 +282,7 @@ export default function App() {
       <View style={{ padding: 16, borderRadius: 20, backgroundColor: "#10283A", borderWidth: 1, borderColor: "#28546C", gap: 9 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <Text style={{ color: "#A9D8E9", fontSize: 9, fontWeight: "900", letterSpacing: 1.3 }}>MARKET DATA CONNECTION</Text>
-          <View style={{ paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, backgroundColor: "#17364A" }}><Text style={{ color: marketFeedState === "live" ? C.green : marketFeedState === "partial" ? "#E8BD70" : marketFeedState === "loading" ? C.cyan : C.red, fontSize: 9, fontWeight: "900" }}>{marketFeedState.toUpperCase()}</Text></View>
+          <View style={{ paddingHorizontal: 9, paddingVertical: 5, borderRadius: 8, backgroundColor: "#17364A" }}><Text style={{ color: marketFeedState === "live" ? C.green : marketFeedState === "partial" ? "#E8BD70" : marketFeedState === "loading" ? C.cyan : C.red, fontSize: 9, fontWeight: "900" }}>{marketFeedState==="live"?"CONNECTED":marketFeedState.toUpperCase()}</Text></View>
         </View>
         <Text style={{ color: C.text, fontSize: 22, fontWeight: "900" }}>{quotes.length} <Text style={{ color: "#9AB9C9", fontSize: 13 }}>verified quotes loaded</Text></Text>
         <Text style={{ color: "#A7C2D2", fontSize: 10, lineHeight: 16 }}>{marketError || "Prices and history are requested from Twelve Data. Missing values are never estimated."}</Text>
