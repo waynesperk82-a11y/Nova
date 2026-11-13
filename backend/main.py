@@ -157,6 +157,50 @@ async def markets(symbols: str | None = Query(default=None, max_length=500)) -> 
     }
 
 
+@app.get("/api/markets/series")
+async def market_series(
+    symbol: str = Query(..., min_length=3, max_length=16),
+    range: str = Query(default="1M", alias="range"),
+) -> dict[str, Any]:
+    normalized = symbol.strip().upper()
+    if normalized not in SYMBOLS:
+        raise HTTPException(status_code=400, detail="This instrument is not supported.")
+    if range not in SERIES_RANGES:
+        raise HTTPException(status_code=400, detail="Unsupported chart range.")
+    if not TWELVE_DATA_API_KEY:
+        raise HTTPException(status_code=503, detail="Market-data provider is not configured on the server.")
+    interval, outputsize = SERIES_RANGES[range]
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.get(
+                TWELVE_DATA_SERIES_URL,
+                params={"symbol": normalized, "interval": interval, "outputsize": outputsize, "order": "ASC"},
+                headers={"Authorization": f"apikey {TWELVE_DATA_API_KEY}"},
+            )
+            response.raise_for_status()
+            payload = response.json()
+        if payload.get("status") == "error" or payload.get("code"):
+            raise HTTPException(status_code=502, detail=payload.get("message", "The provider could not return chart history."))
+        values = payload.get("values")
+        if not isinstance(values, list) or not values:
+            raise HTTPException(status_code=502, detail="No historical chart data was returned by the provider.")
+        points: list[dict[str, Any]] = []
+        for item in values:
+            try:
+                close = float(item.get("close"))
+                if math.isfinite(close) and close > 0:
+                    points.append({"time": item.get("datetime"), "close": close})
+            except (TypeError, ValueError, AttributeError):
+                continue
+        if not points:
+            raise HTTPException(status_code=502, detail="The provider returned no valid historical prices.")
+        return {"symbol": normalized, "range": range, "interval": interval, "source": "Twelve Data", "fetched_at": datetime.now(timezone.utc).isoformat(), "data": points, "mode": "read-only"}
+    except HTTPException:
+        raise
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="Could not retrieve historical prices from the market-data provider.")
+
+
 @app.post("/api/core/chat")
 async def chat(payload: ChatRequest) -> dict[str, Any]:
     if not AI_API_KEY:
