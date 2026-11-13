@@ -10,7 +10,7 @@ type SymbolCode = "EUR/USD" | "GBP/USD" | "USD/JPY" | "USD/CHF" | "XAU/USD" | "X
 type MarketCategory = "Watchlist" | "Forex" | "Stocks" | "Crypto" | "Commodities";
 type ChartRange = "1D" | "1W" | "1M" | "3M" | "1Y";
 type MarketPoint = { time: string | null; close: number };
-type Quote = { symbol: SymbolCode; price: string; quote_time: string | null; source: string; currency: string | null };
+type Quote = { symbol: SymbolCode; price: string; quote_time: string | null; source: string; currency: string | null; change?: string | null; percent_change?: string | null };
 type MarketResponse = { data: Quote[]; status: string; fetched_at: string; errors?: string[] };
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type Task = { id: number; title: string; done: boolean };
@@ -58,6 +58,7 @@ export default function App() {
   const [marketFeedState, setMarketFeedState] = useState<"loading" | "live" | "partial" | "offline">("loading");
   const [watchlistSymbols, setWatchlistSymbols] = useState<SymbolCode[]>(["EUR/USD", "GBP/USD", "XAU/USD"]);
   const [marketCategory, setMarketCategory] = useState<MarketCategory>("Watchlist");
+  const [marketSearch, setMarketSearch] = useState("");
   const [selectedMarketSymbol, setSelectedMarketSymbol] = useState<SymbolCode>("EUR/USD");
   const [chartRange, setChartRange] = useState<ChartRange>("1M");
   const [chartPoints, setChartPoints] = useState<MarketPoint[]>([]);
