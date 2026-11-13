@@ -203,7 +203,7 @@ export default function App() {
     </TouchableOpacity>
     <View style={styles.dashToolGrid}>
       <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Markets")}><Text style={styles.dashToolIcon}>⌁</Text><Text style={styles.dashToolTitle}>Markets</Text><Text style={styles.dashToolDesc}>Provider-backed data</Text></TouchableOpacity>
-      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Workspace")}><Text style={styles.dashToolIcon}>▤</Text><Text style={styles.dashToolTitle}>Workspace</Text><Text style={styles.dashToolDesc}>Local project tasks</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Workspace")}><Text style={styles.dashToolIcon}>▤</Text><Text style={styles.dashToolTitle}>Workspace</Text><Text style={styles.dashToolDesc}>Session task list</Text></TouchableOpacity>
       <TouchableOpacity style={styles.dashToolCard} onPress={() => setTab("Connections")}><Text style={styles.dashToolIcon}>⌘</Text><Text style={styles.dashToolTitle}>Connections</Text><Text style={styles.dashToolDesc}>Real service setup</Text></TouchableOpacity>
     </View>
     <View style={styles.dashToolGrid}>
@@ -298,7 +298,7 @@ export default function App() {
           {chartLoading ? <View style={{ alignItems: "center", gap: 8 }}><ActivityIndicator color={C.cyan} /><Text style={{ color: C.muted, fontSize: 10 }}>Loading verified history…</Text></View> : chartError ? <Text style={{ color: C.red, fontSize: 10, textAlign: "center", paddingHorizontal: 18 }}>{chartError}</Text> : chartPoints.length ? <View style={{ position: "absolute", bottom: 9, left: 10, right: 10, flexDirection: "row", justifyContent: "space-between" }}><Text style={{ color: "#8193A9", fontSize: 8 }}>{chartPoints[0]?.time ?? ""}</Text><Text style={{ color: "#8193A9", fontSize: 8 }}>{chartPoints[chartPoints.length-1]?.time ?? ""}</Text></View> : <Text style={{ color: C.muted, fontSize: 10, textAlign: "center", paddingHorizontal: 18 }}>Historical data is not available yet. Connect the configured provider to load this chart.</Text>}
         </View>
         <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Text style={{ color: C.muted, fontSize: 9 }}>LOW · {chartValues.length ? minValue.toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</Text><Text style={{ color: C.muted, fontSize: 9 }}>HIGH · {chartValues.length ? maxValue.toLocaleString(undefined,{maximumFractionDigits:6}) : "—"}</Text></View>
-        <Text style={{ color: "#8D9FB3", fontSize: 8 }}>Source · Twelve Data historical close prices · read-only</Text>
+        <Text style={{ color: "#8D9FB3", fontSize: 8 }}>{chartPoints.length ? "Source · Twelve Data historical close prices · read-only" : "Source · waiting for verified Twelve Data history"}</Text>
       </View>
       <View style={{ gap: 8 }}>
         <Text style={{ color: "#C0D0DC", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 }}>MARKET CATEGORIES</Text>
@@ -338,12 +338,12 @@ export default function App() {
       <Button label="OPEN MARKETS" onPress={()=>setTab("Markets")} />
     </Panel>
     <Panel>
-      <View style={styles.rowBetween}><Text style={styles.panelTitle}>AI provider</Text><Text style={[styles.statusTag,{color:C.cyan}]}>BACKEND CONFIG</Text></View>
+      <View style={styles.rowBetween}><Text style={styles.panelTitle}>AI provider</Text><Text style={[styles.statusTag,{color:C.cyan}]}>{backendState==="ready"?"CONNECTED":backendState==="checking"?"CHECKING":backendState==="unknown"?"NOT CONFIGURED":"UNAVAILABLE"}</Text></View>
       <Text style={styles.body}>NOVA's AI requests are routed through the protected backend. Provider credentials must remain server-side and must never be stored in the mobile app.</Text>
     </Panel>
     <Panel>
-      <View style={styles.rowBetween}><Text style={styles.panelTitle}>Broker sandbox adapter</Text><Text style={[styles.statusTag,{color:"#E8BD70"}]}>NOT CONNECTED</Text></View>
-      <Text style={styles.body}>Broker integrations are not implemented in this build. A future provider adapter can be developed against a sandbox/demo environment for learning and testing only.</Text>
+      <View style={styles.rowBetween}><Text style={styles.panelTitle}>Broker connection</Text><Text style={[styles.statusTag,{color:"#E8BD70"}]}>NOT CONNECTED</Text></View>
+      <Text style={styles.body}>No broker is connected in this build. This is the single broker connection area. It will only be enabled after a supported provider is verified for safe read-only access. NOVA is not collecting broker credentials or sending orders.</Text>
       <View style={styles.practiceLock}><Text style={styles.practiceLockText}>LIVE ORDER ROUTING DISABLED</Text></View>
       <Text style={styles.mutedSmall}>No broker credentials are collected, no account is linked and no orders or money movements can be sent.</Text>
     </Panel>
@@ -374,7 +374,7 @@ export default function App() {
     const notional = Number.isFinite(selectedPrice) && Number.isFinite(quantity) ? selectedPrice * quantity : NaN;
     return <ScrollView contentContainerStyle={styles.content}>
       <Heading title="Trading practice" subtitle="A learning simulator · no real money or broker connection" />
-      <Panel style={styles.practiceBanner}><Text style={styles.eyebrow}>SAFE PRACTICE MODE</Text><Text style={styles.panelTitle}>Learn the order workflow</Text><Text style={styles.body}>This screen records simulated orders locally for learning. It cannot send orders, access funds, or connect to a broker.</Text><View style={styles.practiceLock}><Text style={styles.practiceLockText}>BROKER EXECUTION DISABLED</Text></View></Panel>
+      <Panel style={styles.practiceBanner}><Text style={styles.eyebrow}>SAFE PRACTICE MODE</Text><Text style={styles.panelTitle}>Learn the order workflow</Text><Text style={styles.body}>This screen records simulated practice orders in the current app session for learning. It does not save them across reloads, send orders, access funds or connect to a broker.</Text><View style={styles.practiceLock}><Text style={styles.practiceLockText}>BROKER EXECUTION DISABLED</Text></View></Panel>
       <Panel>
         <Text style={styles.panelTitle}>Create a practice order</Text>
         <Text style={styles.mutedSmall}>Instrument</Text>
@@ -414,7 +414,7 @@ export default function App() {
       <View style={{ flex: 1, gap: 4 }}><Text style={{ color: task.done ? "#82999A" : C.text, fontSize: 11, fontWeight: "800", textDecorationLine: task.done ? "line-through" : "none" }}>{task.title}</Text><Text style={{ color: C.muted, fontSize: 8 }}>{task.done ? "COMPLETED" : "IN PROGRESS"} · TASK {String(i + 1).padStart(2, "0")}</Text></View><Text style={{ color: C.cyan, fontSize: 18 }}>›</Text>
     </TouchableOpacity>)}
     <View style={{ flexDirection: "row", gap: 8 }}><TextInput value={newTask} onChangeText={setNewTask} placeholder="Add a new task to your board…" placeholderTextColor={C.muted} style={{ flex: 1, minHeight: 48, color: C.text, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 13, paddingHorizontal: 13, fontSize: 11 }} onSubmitEditing={addTask} returnKeyType="done" /><TouchableOpacity onPress={addTask} style={{ width: 49, borderRadius: 13, backgroundColor: "#087F83", alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#FFF", fontSize: 24, fontWeight: "700" }}>+</Text></TouchableOpacity></View>
-    <View style={{ padding: 14, borderRadius: 15, backgroundColor: "#171B29", borderWidth: 1, borderColor: "#3A3B54", gap: 5 }}><Text style={{ color: "#C9B8FF", fontSize: 10, fontWeight: "900" }}>WORKSPACE NOTE</Text><Text style={{ color: "#AAB6C7", fontSize: 10, lineHeight: 17 }}>Tasks are stored locally in the running app. Cloud sync, accounts and shared projects are not enabled in this prototype yet.</Text></View>
+    <View style={{ padding: 14, borderRadius: 15, backgroundColor: "#171B29", borderWidth: 1, borderColor: "#3A3B54", gap: 5 }}><Text style={{ color: "#C9B8FF", fontSize: 10, fontWeight: "900" }}>WORKSPACE NOTE</Text><Text style={{ color: "#AAB6C7", fontSize: 10, lineHeight: 17 }}>Tasks remain in this app session only. They are not saved across reloads. Cloud sync, accounts and shared projects are not enabled in this prototype yet.</Text></View>
   </ScrollView>;
 
   const screens: Record<Tab, () => React.ReactNode> = { Home: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Connections: renderConnections, Practice: renderPractice, Workspace: renderWorkspace, More: renderMore };
