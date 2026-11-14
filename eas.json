@@ -14,7 +14,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_NOVA_API_URL": "https://nova-api-azure.vercel.app"
+        "EXPO_PUBLIC_NOVA_API_URL": "https://nova-api-azure.vercel.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://hramtqpkmyjyexphvqtw.supabase.co"
       }
     },
     "production": {
@@ -23,7 +24,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_NOVA_API_URL": "https://nova-api-azure.vercel.app"
+        "EXPO_PUBLIC_NOVA_API_URL": "https://nova-api-azure.vercel.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://hramtqpkmyjyexphvqtw.supabase.co"
       }
     }
   }
