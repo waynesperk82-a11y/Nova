@@ -29,6 +29,14 @@ Set these on the Vercel project that builds the NOVA frontend, for Production, P
 
 Only the publishable key belongs in frontend configuration. Never expose a Supabase secret or service-role key in the app.
 
+## Expo / EAS build environment
+
+The preview and production profiles in `eas.json` include the public Supabase project URL and NOVA API URL. Before creating an Android build, add `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to the matching EAS environment in the Expo dashboard (Preview and Production). It is a client-side publishable key, not a service-role secret. Do not add a Supabase secret or service-role key.
+
+If you build locally instead of using EAS, provide the same public variables in your local environment. EAS does not automatically inherit variables configured on Vercel.
+
 ## Implementation status
 
-The client and snapshot-sync helpers are foundational modules. The app UI still needs to hydrate and persist its chat, watchlist, and workspace state through these helpers, then be tested in web and Android builds before cloud sync can be called complete.
+The app now restores and saves chat messages, watchlist symbols, workspace tasks, and selected market preferences through local-first device snapshots. When the Supabase variables and dashboard setup are present, it creates a silent anonymous device identity and syncs the snapshot to the RLS-protected table. If cloud setup is unavailable, local data remains usable and the app displays the storage state.
+
+A real Android build and device test are still required before cloud sync can be called fully verified.
