@@ -5,7 +5,7 @@ NOVA is an Android-first, cross-platform AI workspace built with Expo / React Na
 ## Current app areas
 
 - **Home:** workspace overview and navigation.
-- **Intelligence:** conversational AI using a configurable OpenAI-compatible API.
+- **Intelligence:** conversational AI using a configurable OpenAI-compatible API, with Think, Research, Create and Plan response modes.
 - **Markets:** read-only EUR/USD, GBP/USD and XAU/USD data from Twelve Data.
 - **Workspace:** local task list; tasks are currently held in app memory and are not synced to an account.
 
@@ -103,10 +103,10 @@ For a physical phone, use a reachable LAN address or deployed HTTPS URL; `localh
 
 - `GET /health` — provider configuration status; no secrets returned.
 - `GET /api/core/status` — AI provider configuration status; no secrets returned.
-- `POST /api/core/chat` — bounded conversation history and a server-side AI request.
+- `POST /api/core/chat` — bounded conversation history, a validated AI mode (`think`, `research`, `create`, or `plan`) and a server-side AI request.
 - `GET /api/markets/status` — market-provider configuration status.
 - `GET /api/markets` — verified provider quotes or an explicit unavailable/error response.
 
 ## Production-readiness limits
 
-Persistent memory, accounts, cloud task sync, shared workspaces and external tool execution are not implemented. The current chat is conversational only and does not claim to perform actions in other services. Do not expose paid AI calls publicly until authentication and abuse controls are in place.
+Persistent memory, accounts, cloud task sync, shared workspaces, live web research and external tool execution are not implemented. AI modes change response instructions and structure; they do not add browsing or external tools. The current chat is conversational only and does not claim to perform actions in other services. Do not expose paid AI calls publicly until authentication and abuse controls are in place.
