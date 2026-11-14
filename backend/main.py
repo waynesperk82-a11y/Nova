@@ -40,6 +40,15 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=6000)
     history: list[ChatMessage] = Field(default_factory=list, max_length=12)
+    mode: Literal["think", "research", "create", "plan"] = "think"
+
+
+MODE_INSTRUCTIONS = {
+    "think": "MODE: THINK. Analyze the question carefully, compare relevant options, state assumptions and uncertainty, then give a concise explanation of the key rationale and conclusion. Do not reveal private chain-of-thought; provide a brief rationale instead.",
+    "research": "MODE: RESEARCH. Organize the answer into what is known, what remains uncertain, and what evidence would verify it. Distinguish established facts from estimates. You do not have live web access in this session unless an actual browsing tool is provided; never invent citations or claim to have searched.",
+    "create": "MODE: CREATE. Prioritize originality, useful variations and concrete creative output. Respect the user’s constraints and clearly label any assumptions.",
+    "plan": "MODE: PLAN. Turn the request into an actionable plan with ordered steps, milestones, priorities, dependencies and likely risks. Keep the plan realistic and identify the best immediate next action.",
+}
 
 
 NOVA_SYSTEM_PROMPT = """You are NOVA, a capable personal intelligence and productivity assistant.
@@ -161,7 +170,7 @@ async def chat(payload: ChatRequest) -> dict[str, Any]:
 
     # Keep only the most recent turns and cap the full prompt size.
     history = payload.history[-12:]
-    messages = [{"role": "system", "content": NOVA_SYSTEM_PROMPT}]
+    messages = [{"role": "system", "content": NOVA_SYSTEM_PROMPT + "\\n\\n" + MODE_INSTRUCTIONS[payload.mode]}]
     messages.extend({"role": item.role, "content": item.content} for item in history)
     messages.append({"role": "user", "content": payload.message})
 
@@ -198,6 +207,7 @@ async def chat(payload: ChatRequest) -> dict[str, Any]:
             return {
                 "reply": reply.strip(),
                 "model": AI_MODEL,
+                "mode": payload.mode,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             }
     except httpx.TimeoutException:
