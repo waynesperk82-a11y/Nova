@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isSupabaseConfigured } from "./lib/supabase";
+import { readLocalSnapshot, syncDeviceSnapshot, writeCloudSnapshot, writeLocalSnapshot, type NovaDeviceSnapshot } from "./lib/deviceStorage";
 import { Analytics } from "@vercel/analytics/react";
 import {
   ActivityIndicator, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
@@ -74,6 +76,123 @@ export default function App() {
     { id: 2, title: "Review the project roadmap", done: false },
   ]);
   const [newTask, setNewTask] = useState("");
+  const [storageState, setStorageState] = useState<"loading" | "local" | "syncing" | "synced" | "offline">("loading");
+  const [storageNote, setStorageNote] = useState("Preparing device storage…");
+  const storageHydrated = useRef(false);
+  const cloudSyncQueue = useRef<Promise<void>>(Promise.resolve());
+
+  // Restore this installation's local snapshot first, then reconcile with its
+  // anonymous Supabase identity when cloud storage is configured.
+  useEffect(() => {
+    let active = true;
+    const hydrate = async () => {
+      const localSnapshot = await readLocalSnapshot();
+      let snapshot: NovaDeviceSnapshot | null = localSnapshot;
+      let cloudAvailable = false;
+      if (isSupabaseConfigured) {
+        try {
+          snapshot = await syncDeviceSnapshot(localSnapshot);
+          cloudAvailable = true;
+        } catch (error) {
+          console.warn("NOVA cloud restore unavailable; keeping local data.", error);
+        }
+      }
+      if (!active) return;
+      if (snapshot) {
+        setMessages(Array.isArray(snapshot.messages) ? snapshot.messages : []);
+        setWatchlistSymbols(Array.isArray(snapshot.watchlistSymbols) && snapshot.watchlistSymbols.length
+          ? snapshot.watchlistSymbols.filter((symbol): symbol is SymbolCode => SYMBOLS.includes(symbol as SymbolCode))
+          : ["EUR/USD", "GBP/USD", "XAU/USD"]);
+        setTasks(Array.isArray(snapshot.tasks) ? snapshot.tasks : [
+          { id: 1, title: "Connect and verify the NOVA backend", done: false },
+          { id: 2, title: "Review the project roadmap", done: false },
+        ]);
+        const preferences = snapshot.preferences || {};
+        if (typeof preferences.marketCategory === "string" && ["Watchlist", "Forex", "Stocks", "Crypto", "Commodities"].includes(preferences.marketCategory)) {
+          setMarketCategory(preferences.marketCategory as MarketCategory);
+        }
+        if (typeof preferences.selectedMarketSymbol === "string" && SYMBOLS.includes(preferences.selectedMarketSymbol as SymbolCode)) {
+          setSelectedMarketSymbol(preferences.selectedMarketSymbol as SymbolCode);
+        }
+        if (typeof preferences.chartRange === "string" && ["1D", "1W", "1M", "3M", "1Y"].includes(preferences.chartRange)) {
+          setChartRange(preferences.chartRange as ChartRange);
+        }
+      }
+      storageHydrated.current = true;
+      if (cloudAvailable) {
+        setStorageState("synced");
+        setStorageNote("This device is connected to its private cloud snapshot.");
+      } else if (isSupabaseConfigured) {
+        setStorageState("offline");
+        setStorageNote("Cloud restore is unavailable. Your local device data is retained.");
+      } else {
+        setStorageState("local");
+        setStorageNote("Saved on this device. Add Supabase configuration to enable cloud sync.");
+      }
+    };
+    hydrate().catch(error => {
+      console.warn("NOVA local restore failed.", error);
+      if (active) {
+        storageHydrated.current = true;
+        setStorageState("offline");
+        setStorageNote("Storage could not be restored. New changes will still be saved when possible.");
+      }
+    });
+    return () => { active = false; };
+  }, []);
+
+  // Persist every meaningful change locally immediately, then serialize a
+  // debounced cloud write so rapid edits cannot overwrite newer snapshots.
+  useEffect(() => {
+    if (!storageHydrated.current) return;
+    const snapshot: NovaDeviceSnapshot = {
+      schemaVersion: 1,
+      savedAt: new Date().toISOString(),
+      messages,
+      watchlistSymbols,
+      tasks,
+      preferences: { marketCategory, selectedMarketSymbol, chartRange },
+    };
+    let active = true;
+    writeLocalSnapshot(snapshot).then(() => {
+      if (active && !isSupabaseConfigured) {
+        setStorageState("local");
+        setStorageNote("Your chat, watchlist and tasks are saved on this device.");
+      } else if (active) {
+        setStorageState("syncing");
+        setStorageNote("Saved locally. Syncing your private device snapshot…");
+      }
+    }).catch(error => {
+      console.warn("NOVA local save failed.", error);
+      if (active) {
+        setStorageState("offline");
+        setStorageNote("Local saving is unavailable. Keep this app open until storage is restored.");
+      }
+    });
+    const timer = setTimeout(() => {
+      if (!isSupabaseConfigured) return;
+      cloudSyncQueue.current = cloudSyncQueue.current
+        .catch(() => undefined)
+        .then(() => writeCloudSnapshot(snapshot))
+        .then(() => {
+          if (active) {
+            setStorageState("synced");
+            setStorageNote("Your latest changes are saved on this device and synced to its private cloud snapshot.");
+          }
+        })
+        .catch(error => {
+          console.warn("NOVA cloud save unavailable; local data remains saved.", error);
+          if (active) {
+            setStorageState("offline");
+            setStorageNote("Saved on this device. Cloud sync will retry after a later change.");
+          }
+        });
+    }, 1200);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [messages, watchlistSymbols, tasks, marketCategory, selectedMarketSymbol, chartRange]);
 
   const refreshMarkets = useCallback(async (requestedSymbols: SymbolCode[] = watchlistSymbols) => {
     if (!API_BASE) { setMarketError("Backend URL is not configured. Set EXPO_PUBLIC_NOVA_API_URL in the Expo environment."); setMarketFeedState("offline"); return; }
@@ -213,7 +332,7 @@ export default function App() {
       <Text style={styles.dashSystemFoot}>Core last checked · {timeLabel(backendCheckedAt)}</Text>
       <Text style={styles.dashSystemFoot}>Market last fetched · {timeLabel(marketFetched)}</Text>
     </View>
-    <Text style={styles.dashDisclaimer}>Workspace tasks stay in the current app session only. Market information is read-only; no broker is connected.</Text>
+    <Text style={styles.dashDisclaimer}>Your workspace is saved locally on this device. Storage: {storageState === "synced" ? "cloud synced" : storageState === "syncing" ? "syncing" : storageState === "loading" ? "loading" : storageState === "offline" ? "local save / cloud unavailable" : "device saved"}. Market information is read-only; no broker is connected.</Text>
   </ScrollView>;
 
   const renderIntelligence = () => <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={8}>
@@ -361,9 +480,9 @@ export default function App() {
   const renderWorkspace = () => <ScrollView contentContainerStyle={{ padding: 17, paddingBottom: 32, gap: 13 }}>
     <View style={{ marginBottom: 4 }}><Text style={{ color: C.cyan, fontSize: 9, fontWeight: "900", letterSpacing: 2 }}>NOVA / PROJECT STUDIO</Text><Text style={{ color: C.text, fontSize: 29, fontWeight: "900", marginTop: 6 }}>Workspace</Text><Text style={{ color: C.muted, fontSize: 11, marginTop: 4 }}>Turn plans into visible progress.</Text></View>
     <View style={{ padding: 17, borderRadius: 20, backgroundColor: "#102A36", borderWidth: 1, borderColor: "#286274", gap: 12 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}><Text style={{ color: "#9CD8E2", fontSize: 9, fontWeight: "900", letterSpacing: 1.3 }}>PROJECT OVERVIEW</Text><Text style={{ color: C.cyan, fontSize: 9, fontWeight: "900" }}>LOCAL BOARD</Text></View>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}><Text style={{ color: "#9CD8E2", fontSize: 9, fontWeight: "900", letterSpacing: 1.3 }}>PROJECT OVERVIEW</Text><Text style={{ color: C.cyan, fontSize: 9, fontWeight: "900" }}>{storageState === "synced" ? "CLOUD SYNCED" : storageState === "syncing" ? "SYNCING" : storageState === "loading" ? "LOADING" : "DEVICE BOARD"}</Text></View>
       <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 7 }}><Text style={{ color: "#F2FCFF", fontSize: 34, fontWeight: "900" }}>{completedTasks}</Text><Text style={{ color: "#A3C4CE", fontSize: 12, marginBottom: 5 }}>of {tasks.length} completed</Text></View>
-      <View style={{ height: 7, borderRadius: 5, backgroundColor: "#234554", overflow: "hidden" }}><View style={{ height: 7, borderRadius: 5, backgroundColor: C.cyan, width: tasks.length ? String(completedTasks / tasks.length * 100) + "%" : "0%" }} /></View>
+      <View style={{ height: 7, borderRadius: 5, backgroundColor: "#234554", overflow: "hidden" }}><View style={{ height: 7, borderRadius: 5, backgroundColor: C.cyan, width: `${tasks.length ? completedTasks / tasks.length * 100 : 0}%` }} /></View>
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Text style={{ color: "#A3C4CE", fontSize: 9 }}>Progress</Text><Text style={{ color: C.cyan, fontSize: 9, fontWeight: "900" }}>{tasks.length ? Math.round(completedTasks / tasks.length * 100) : 0}%</Text></View>
     </View>
     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}><Text style={{ color: "#C0D0DC", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 }}>TASK BOARD</Text><Text style={{ color: C.muted, fontSize: 9 }}>{tasks.length} ITEMS</Text></View>
@@ -372,7 +491,7 @@ export default function App() {
       <View style={{ flex: 1, gap: 4 }}><Text style={{ color: task.done ? "#82999A" : C.text, fontSize: 11, fontWeight: "800", textDecorationLine: task.done ? "line-through" : "none" }}>{task.title}</Text><Text style={{ color: C.muted, fontSize: 8 }}>{task.done ? "COMPLETED" : "IN PROGRESS"} · TASK {String(i + 1).padStart(2, "0")}</Text></View><Text style={{ color: C.cyan, fontSize: 18 }}>›</Text>
     </TouchableOpacity>)}
     <View style={{ flexDirection: "row", gap: 8 }}><TextInput value={newTask} onChangeText={setNewTask} placeholder="Add a new task to your board…" placeholderTextColor={C.muted} style={{ flex: 1, minHeight: 48, color: C.text, backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 13, paddingHorizontal: 13, fontSize: 11 }} onSubmitEditing={addTask} returnKeyType="done" /><TouchableOpacity onPress={addTask} style={{ width: 49, borderRadius: 13, backgroundColor: "#087F83", alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#FFF", fontSize: 24, fontWeight: "700" }}>+</Text></TouchableOpacity></View>
-    <View style={{ padding: 14, borderRadius: 15, backgroundColor: "#171B29", borderWidth: 1, borderColor: "#3A3B54", gap: 5 }}><Text style={{ color: "#C9B8FF", fontSize: 10, fontWeight: "900" }}>WORKSPACE NOTE</Text><Text style={{ color: "#AAB6C7", fontSize: 10, lineHeight: 17 }}>Tasks remain in this app session only. They are not saved across reloads. Cloud sync, accounts and shared projects are not enabled in this prototype yet.</Text></View>
+    <View style={{ padding: 14, borderRadius: 15, backgroundColor: "#171B29", borderWidth: 1, borderColor: "#3A3B54", gap: 5 }}><Text style={{ color: "#C9B8FF", fontSize: 10, fontWeight: "900" }}>WORKSPACE NOTE</Text><Text style={{ color: "#AAB6C7", fontSize: 10, lineHeight: 17 }}>{storageNote} No email/password account is required. Supabase uses a private anonymous device identity when configured.</Text></View>
   </ScrollView>;
 
   const screens: Record<Tab, () => React.ReactNode> = { Home: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Connections: renderConnections, Workspace: renderWorkspace, More: renderMore };
