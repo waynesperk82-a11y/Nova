@@ -81,3 +81,30 @@ def test_markets_require_real_provider_key(monkeypatch):
     response = client.get("/api/markets")
     assert response.status_code == 503
     assert "No sample prices" in response.json()["detail"]
+
+
+
+def test_chat_accepts_each_supported_ai_mode(monkeypatch):
+    monkeypatch.setattr(main, "AI_API_KEY", "")
+    for mode in ("think", "research", "create", "plan"):
+        response = client.post(
+            "/api/core/chat",
+            json={"message": "Test mode", "history": [], "mode": mode},
+        )
+        # Request validation succeeded; the route then correctly reports missing provider configuration.
+        assert response.status_code == 503
+        assert "not configured" in response.json()["detail"].lower()
+
+
+def test_chat_rejects_unknown_ai_mode():
+    response = client.post(
+        "/api/core/chat",
+        json={"message": "Test mode", "history": [], "mode": "unrestricted"},
+    )
+    assert response.status_code == 422
+
+
+def test_core_status_lists_supported_chat_modes():
+    response = client.get("/api/core/status")
+    assert response.status_code == 200
+    assert response.json()["chat_modes"] == ["think", "research", "create", "plan"]
