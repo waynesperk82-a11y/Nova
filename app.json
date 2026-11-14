@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "NOVA Trader AI",
+    "name": "NOVA",
     "slug": "nova-trader-ai",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
       "package": "com.nova.traderai"
     },
     "splash": {
-      "backgroundColor": "#07111F"
+      "backgroundColor": "#080B14"
     }
   }
 }
