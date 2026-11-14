@@ -81,6 +81,7 @@ async def core_status() -> dict[str, Any]:
         "provider": "OpenAI-compatible API",
         "model": AI_MODEL,
         "mode": "advisory; no external actions",
+        "chat_modes": ["think", "research", "create", "plan"],
     }
 
 
@@ -170,7 +171,7 @@ async def chat(payload: ChatRequest) -> dict[str, Any]:
 
     # Keep only the most recent turns and cap the full prompt size.
     history = payload.history[-12:]
-    messages = [{"role": "system", "content": NOVA_SYSTEM_PROMPT + "\\n\\n" + MODE_INSTRUCTIONS[payload.mode]}]
+    messages = [{"role": "system", "content": NOVA_SYSTEM_PROMPT + "\n\n" + MODE_INSTRUCTIONS[payload.mode]}]
     messages.extend({"role": item.role, "content": item.content} for item in history)
     messages.append({"role": "user", "content": payload.message})
 
