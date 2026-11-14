@@ -108,3 +108,33 @@ def test_core_status_lists_supported_chat_modes():
     response = client.get("/api/core/status")
     assert response.status_code == 200
     assert response.json()["chat_modes"] == ["think", "research", "create", "plan"]
+
+
+def test_market_symbol_normalization_and_validation():
+    assert main.normalize_market_symbol(" btc/usd ") == "BTC/USD"
+    assert main.normalize_market_symbol("aapl") == "AAPL"
+    try:
+        main.normalize_market_symbol("BTC/USD<script>")
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 422
+    else:
+        raise AssertionError("Invalid symbol should be rejected")
+
+
+def test_market_history_requires_provider_key(monkeypatch):
+    monkeypatch.setattr(main, "TWELVE_DATA_API_KEY", "")
+    response = client.get("/api/markets/history?symbol=BTC/USD&interval=1day")
+    assert response.status_code == 503
+    assert "No sample chart data" in response.json()["detail"]
+
+
+def test_market_history_rejects_unsupported_interval(monkeypatch):
+    monkeypatch.setattr(main, "TWELVE_DATA_API_KEY", "test-key")
+    response = client.get("/api/markets/history?symbol=BTC/USD&interval=yearly")
+    assert response.status_code == 422
+
+
+def test_market_symbols_limit_is_enforced(monkeypatch):
+    monkeypatch.setattr(main, "TWELVE_DATA_API_KEY", "test-key")
+    response = client.get("/api/markets?symbols=" + ",".join([f"STK{i}" for i in range(21)]))
+    assert response.status_code == 422
