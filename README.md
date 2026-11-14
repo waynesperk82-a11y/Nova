@@ -6,7 +6,7 @@ NOVA is an Android-first, cross-platform AI workspace built with Expo / React Na
 
 - **Home:** workspace overview and navigation.
 - **Intelligence:** conversational AI using a configurable OpenAI-compatible API, with Think, Research, Create and Plan response modes.
-- **Markets:** read-only EUR/USD, GBP/USD and XAU/USD data from Twelve Data.
+- **Markets:** customizable read-only watchlist (up to 20 symbols), quote details and historical price charts from Twelve Data. Supports provider-listed forex, crypto pairs, equities and commodities; actual coverage and freshness depend on the Twelve Data plan.
 - **Workspace:** local task list; tasks are currently held in app memory and are not synced to an account.
 
 NOVA is an advisory prototype. It does not browse the web, connect to broker accounts, place trades, or control physical equipment.
@@ -17,6 +17,8 @@ See [the LhamaBot public-information review](docs/research/automation-safety-les
 
 NOVA adopts these safeguards:
 - Show the provider and source timestamp for every market quote; distinguish provider time from NOVA retrieval time.
+- Validate user-selected market symbols and limit watchlists to 20 assets.
+- Render historical charts only from provider-returned price history; never generate sample prices.
 - Never invent missing prices or present unverified promotional performance as fact.
 - Keep market connections read-only. No broker order placement, withdrawal permissions, wallet signing or credential collection.
 - Keep API secrets server-side and use the least privilege available.
@@ -105,7 +107,8 @@ For a physical phone, use a reachable LAN address or deployed HTTPS URL; `localh
 - `GET /api/core/status` — AI provider configuration status; no secrets returned.
 - `POST /api/core/chat` — bounded conversation history, a validated AI mode (`think`, `research`, `create`, or `plan`) and a server-side AI request.
 - `GET /api/markets/status` — market-provider configuration status.
-- `GET /api/markets` — verified provider quotes or an explicit unavailable/error response.
+- `GET /api/markets?symbols=BTC/USD,ETH/USD` — verified quotes for 1–20 requested symbols or explicit unavailable/error responses.
+- `GET /api/markets/history?symbol=BTC/USD&interval=1day` — verified historical OHLCV points for charts; intervals are validated by the API.
 
 ## Production-readiness limits
 
