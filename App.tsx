@@ -7,7 +7,9 @@ import {
 type Tab = "Dashboard" | "Intelligence" | "Markets" | "Workspace";
 type AIMode = "think" | "research" | "create" | "plan";
 type SymbolCode = string;
-type Quote = { symbol: SymbolCode; price: string; quote_time: string | null; source: string; currency: string | null; open?: string | null; high?: string | null; low?: string | null; previous_close?: string | null; change?: string | null; percent_change?: string | null; volume?: string | null };\ntype Candle = { datetime: string; close: number };\ntype HistoryResponse = { data: Candle[] };
+type Quote = { symbol: SymbolCode; price: string; quote_time: string | null; source: string; currency: string | null; open?: string | null; high?: string | null; low?: string | null; previous_close?: string | null; change?: string | null; percent_change?: string | null; volume?: string | null };
+type Candle = { datetime: string; close: number };
+type HistoryResponse = { data: Candle[] };
 type MarketResponse = { data: Quote[]; status: string; fetched_at: string; errors?: string[] };
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type Task = { id: number; title: string; done: boolean };
@@ -19,7 +21,9 @@ const AI_MODES: { id: AIMode; label: string; detail: string; icon: string }[] = 
 ];
 
 const API_BASE = process.env.EXPO_PUBLIC_NOVA_API_URL?.replace(/\/$/, "");
-const DEFAULT_SYMBOLS: SymbolCode[] = ["EUR/USD", "GBP/USD", "XAU/USD", "BTC/USD", "ETH/USD"];\nconst MARKET_INTERVALS = ["1day", "4h", "1h", "15min"] as const;\ntype MarketInterval = typeof MARKET_INTERVALS[number];
+const DEFAULT_SYMBOLS: SymbolCode[] = ["EUR/USD", "GBP/USD", "XAU/USD", "BTC/USD", "ETH/USD"];
+const MARKET_INTERVALS = ["1day", "4h", "1h", "15min"] as const;
+type MarketInterval = typeof MARKET_INTERVALS[number];
 const C = { bg: "#080B14", panel: "#111827", panel2: "#19243A", line: "#293650", text: "#F4F6FF", muted: "#9AA8C2", cyan: "#72A7FF", purple: "#A78BFA", green: "#72D6B0", red: "#F18D91" };
 
 function timeLabel(value?: string | null) {
@@ -39,7 +43,14 @@ function Heading({ title, subtitle }: { title: string; subtitle?: string }) {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("Dashboard");
-  const [quotes, setQuotes] = useState<Quote[]>([]);\n  const [watchlist, setWatchlist] = useState<SymbolCode[]>(DEFAULT_SYMBOLS);\n  const [newSymbol, setNewSymbol] = useState("");\n  const [selectedSymbol, setSelectedSymbol] = useState<SymbolCode>("BTC/USD");\n  const [marketInterval, setMarketInterval] = useState<MarketInterval>("1day");\n  const [history, setHistory] = useState<Candle[]>([]);\n  const [historyLoading, setHistoryLoading] = useState(false);\n  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [watchlist, setWatchlist] = useState<SymbolCode[]>(DEFAULT_SYMBOLS);
+  const [newSymbol, setNewSymbol] = useState("");
+  const [selectedSymbol, setSelectedSymbol] = useState<SymbolCode>("BTC/USD");
+  const [marketInterval, setMarketInterval] = useState<MarketInterval>("1day");
+  const [history, setHistory] = useState<Candle[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [marketLoading, setMarketLoading] = useState(false);
   const [marketError, setMarketError] = useState<string | null>(null);
   const [marketFetched, setMarketFetched] = useState<string | null>(null);
@@ -67,11 +78,33 @@ export default function App() {
       if (result.status === "partial") setMarketError((result.errors || []).join(" · ") || "Some symbols were unavailable.");
     } catch (e) { setQuotes([]); setMarketError(e instanceof Error ? e.message : "Could not connect to the market-data service."); }
     finally { setMarketLoading(false); }
+  }, [watchlist]);
+
+  const refreshHistory = useCallback(async (symbol: string, interval: MarketInterval) => {
+    if (!API_BASE) { setHistoryError("Backend URL is not configured."); setHistory([]); return; }
+    setHistoryLoading(true); setHistoryError(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/markets/history?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(interval)}`);
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.detail || `Chart API returned HTTP ${response.status}`);
+      const result = body as HistoryResponse;
+      if (!Array.isArray(result.data) || result.data.length < 2) throw new Error("Not enough verified history is available for this chart.");
+      setHistory(result.data);
+    } catch (e) { setHistory([]); setHistoryError(e instanceof Error ? e.message : "Could not load price history."); }
+    finally { setHistoryLoading(false); }
   }, []);
 
   useEffect(() => { refreshMarkets(); }, [refreshMarkets]);
+  useEffect(() => { refreshHistory(selectedSymbol, marketInterval); }, [refreshHistory, selectedSymbol, marketInterval]);
 
   const quoteFor = (symbol: SymbolCode) => quotes.find(q => q.symbol === symbol);
+  const addMarketSymbol = (raw: string) => {
+    const symbol = raw.trim().toUpperCase().replace(/\s+/g, "");
+    if (!/^[A-Z0-9]{1,12}(\/[A-Z0-9]{1,12})?$/.test(symbol) || watchlist.includes(symbol) || watchlist.length >= 20) return;
+    setWatchlist(current => [...current, symbol]);
+    setSelectedSymbol(symbol);
+    setNewSymbol("");
+  };
   const completedTasks = useMemo(() => tasks.filter(t => t.done).length, [tasks]);
 
   const sendMessage = async () => {
@@ -177,7 +210,8 @@ const styles = StyleSheet.create({
   emptyChat: { alignItems: "center", paddingVertical: 28, marginTop: 12 }, emptyIcon: { color: C.cyan, fontSize: 30, marginBottom: 6 }, message: { padding: 13, borderRadius: 14, borderWidth: 1, gap: 6 }, userMessage: { backgroundColor: "#123449", borderColor: "#28617A", marginLeft: 30 }, aiMessage: { backgroundColor: C.panel, borderColor: C.line, marginRight: 18 }, messageRole: { color: C.cyan, fontSize: 9, fontWeight: "900", letterSpacing: 1 },
   composer: { flexDirection: "row", gap: 8, alignItems: "flex-end", padding: 12, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: C.bg }, composerInput: { flex: 1, maxHeight: 110, minHeight: 45, color: C.text, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 13, paddingHorizontal: 13, paddingVertical: 11, fontSize: 13 }, sendButton: { width: 45, height: 45, borderRadius: 13, backgroundColor: "#426ED0", alignItems: "center", justifyContent: "center" }, sendText: { color: "#FFF", fontSize: 23, fontWeight: "800" }, error: { color: C.red, fontSize: 11, lineHeight: 17 },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }, statusTag: { fontSize: 9, fontWeight: "900" }, quoteCard: { gap: 10 }, quoteSymbol: { color: C.text, fontSize: 16, fontWeight: "900" }, quotePrice: { color: C.cyan, fontSize: 21, fontWeight: "900" },
-  marketHero: { flexDirection: "row", alignItems: "center", gap: 10 }, marketLive: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "#285747", borderRadius: 20, paddingHorizontal: 9, paddingVertical: 6 }, addMarketPanel: { backgroundColor: "#111D30", borderColor: "#344A70", borderWidth: 1, borderRadius: 15, padding: 15, gap: 9 }, quickAssets: { flexDirection: "row", flexWrap: "wrap", gap: 6 }, assetChip: { borderWidth: 1, borderColor: C.line, backgroundColor: C.panel2, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 6 }, assetChipText: { color: "#BFD2F5", fontSize: 9, fontWeight: "800" }, marketAsset: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 13, padding: 11 }, marketAssetSelected: { borderColor: "#5279C4", backgroundColor: "#14223A" }, assetIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: C.panel2, alignItems: "center", justifyContent: "center" }, assetIconText: { color: C.cyan, fontWeight: "900", fontSize: 12 }, changeText: { fontSize: 10, fontWeight: "800" }, removeAsset: { width: 25, height: 25, alignItems: "center", justifyContent: "center" }, removeAssetText: { color: C.muted, fontSize: 20 }, chartPanel: { gap: 10 }, chartDelta: { fontSize: 13, fontWeight: "900" }, chartPrice: { color: C.text, fontSize: 28, fontWeight: "900" }, intervalRow: { flexDirection: "row", gap: 7, marginTop: 4 }, intervalChip: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: 9, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel2 }, intervalChipActive: { borderColor: "#5279C4", backgroundColor: "#20385E" }, intervalText: { color: C.muted, fontSize: 10, fontWeight: "800" }, intervalTextActive: { color: "#D8E5FF" }, chartWrap: { height: 150, flexDirection: "row", gap: 8, paddingTop: 7 }, chartLabels: { justifyContent: "space-between", paddingBottom: 8 }, chartBars: { flex: 1, height: 130, flexDirection: "row", alignItems: "flex-end", gap: 2, borderBottomWidth: 1, borderBottomColor: C.line }, chartBar: { flex: 1, minWidth: 2, borderTopLeftRadius: 2, borderTopRightRadius: 2, opacity: 0.82 }, chartEmpty: { minHeight: 100, justifyContent: "center", alignItems: "center", padding: 15, backgroundColor: "#0D1521", borderRadius: 12 }, detailGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 }, detailCell: { width: "30%", gap: 3 }, detailValue: { color: C.text, fontSize: 12, fontWeight: "800" },\n  progressTrack: { height: 6, backgroundColor: "#253348", borderRadius: 5, overflow: "hidden", marginTop: 5 }, progressFill: { height: 6, backgroundColor: C.cyan, borderRadius: 5 }, taskRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 12 }, checkCircle: { width: 21, height: 21, borderRadius: 7, borderWidth: 1, borderColor: "#58708A", alignItems: "center", justifyContent: "center" }, checked: { backgroundColor: "#426ED0", borderColor: C.cyan }, checkText: { color: "#FFF", fontWeight: "900" }, taskText: { color: C.text, fontSize: 12, flex: 1 }, taskDone: { color: C.muted, textDecorationLine: "line-through" },
+  marketHero: { flexDirection: "row", alignItems: "center", gap: 10 }, marketLive: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: "#285747", borderRadius: 20, paddingHorizontal: 9, paddingVertical: 6 }, addMarketPanel: { backgroundColor: "#111D30", borderColor: "#344A70", borderWidth: 1, borderRadius: 15, padding: 15, gap: 9 }, quickAssets: { flexDirection: "row", flexWrap: "wrap", gap: 6 }, assetChip: { borderWidth: 1, borderColor: C.line, backgroundColor: C.panel2, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 6 }, assetChipText: { color: "#BFD2F5", fontSize: 9, fontWeight: "800" }, marketAsset: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 13, padding: 11 }, marketAssetSelected: { borderColor: "#5279C4", backgroundColor: "#14223A" }, assetIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: C.panel2, alignItems: "center", justifyContent: "center" }, assetIconText: { color: C.cyan, fontWeight: "900", fontSize: 12 }, changeText: { fontSize: 10, fontWeight: "800" }, removeAsset: { width: 25, height: 25, alignItems: "center", justifyContent: "center" }, removeAssetText: { color: C.muted, fontSize: 20 }, chartPanel: { gap: 10 }, chartDelta: { fontSize: 13, fontWeight: "900" }, chartPrice: { color: C.text, fontSize: 28, fontWeight: "900" }, intervalRow: { flexDirection: "row", gap: 7, marginTop: 4 }, intervalChip: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: 9, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel2 }, intervalChipActive: { borderColor: "#5279C4", backgroundColor: "#20385E" }, intervalText: { color: C.muted, fontSize: 10, fontWeight: "800" }, intervalTextActive: { color: "#D8E5FF" }, chartWrap: { height: 150, flexDirection: "row", gap: 8, paddingTop: 7 }, chartLabels: { justifyContent: "space-between", paddingBottom: 8 }, chartBars: { flex: 1, height: 130, flexDirection: "row", alignItems: "flex-end", gap: 2, borderBottomWidth: 1, borderBottomColor: C.line }, chartBar: { flex: 1, minWidth: 2, borderTopLeftRadius: 2, borderTopRightRadius: 2, opacity: 0.82 }, chartEmpty: { minHeight: 100, justifyContent: "center", alignItems: "center", padding: 15, backgroundColor: "#0D1521", borderRadius: 12 }, detailGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 }, detailCell: { width: "30%", gap: 3 }, detailValue: { color: C.text, fontSize: 12, fontWeight: "800" },
+  progressTrack: { height: 6, backgroundColor: "#253348", borderRadius: 5, overflow: "hidden", marginTop: 5 }, progressFill: { height: 6, backgroundColor: C.cyan, borderRadius: 5 }, taskRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 12 }, checkCircle: { width: 21, height: 21, borderRadius: 7, borderWidth: 1, borderColor: "#58708A", alignItems: "center", justifyContent: "center" }, checked: { backgroundColor: "#426ED0", borderColor: C.cyan }, checkText: { color: "#FFF", fontWeight: "900" }, taskText: { color: C.text, fontSize: 12, flex: 1 }, taskDone: { color: C.muted, textDecorationLine: "line-through" },
   addTaskRow: { flexDirection: "row", gap: 8 }, taskInput: { flex: 1, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 12, color: C.text, paddingHorizontal: 13, fontSize: 12 }, addButton: { width: 45, borderRadius: 12, backgroundColor: "#426ED0", alignItems: "center", justifyContent: "center" }, addText: { color: "#FFF", fontSize: 24, fontWeight: "700" },
   nav: { height: 67, backgroundColor: "#0D1521", borderTopWidth: 1, borderTopColor: C.line, flexDirection: "row", alignItems: "center", justifyContent: "space-around" }, navItem: { flex: 1, alignItems: "center", gap: 3 }, navIcon: { color: C.muted, fontSize: 19 }, navLabel: { color: C.muted, fontSize: 9, fontWeight: "700" }, navActive: { color: C.cyan },
 });
