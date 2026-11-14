@@ -5,11 +5,18 @@ import {
 } from "react-native";
 
 type Tab = "Dashboard" | "Intelligence" | "Markets" | "Workspace";
+type AIMode = "think" | "research" | "create" | "plan";
 type SymbolCode = "EUR/USD" | "GBP/USD" | "XAU/USD";
 type Quote = { symbol: SymbolCode; price: string; quote_time: string | null; source: string; currency: string | null };
 type MarketResponse = { data: Quote[]; status: string; fetched_at: string; errors?: string[] };
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type Task = { id: number; title: string; done: boolean };
+const AI_MODES: { id: AIMode; label: string; detail: string; icon: string }[] = [
+  { id: "think", label: "Think", detail: "Analyze and compare", icon: "◈" },
+  { id: "research", label: "Research", detail: "Evidence and uncertainty", icon: "⌕" },
+  { id: "create", label: "Create", detail: "Original ideas", icon: "✧" },
+  { id: "plan", label: "Plan", detail: "Steps and milestones", icon: "▤" },
+];
 
 const API_BASE = process.env.EXPO_PUBLIC_NOVA_API_URL?.replace(/\/$/, "");
 const SYMBOLS: SymbolCode[] = ["EUR/USD", "GBP/USD", "XAU/USD"];
@@ -37,6 +44,7 @@ export default function App() {
   const [marketError, setMarketError] = useState<string | null>(null);
   const [marketFetched, setMarketFetched] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [aiMode, setAiMode] = useState<AIMode>("think");
   const [prompt, setPrompt] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -75,7 +83,7 @@ export default function App() {
     try {
       const response = await fetch(`${API_BASE}/api/core/chat`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history: next.slice(-10, -1) }),
+        body: JSON.stringify({ message: text, history: next.slice(-10, -1), mode: aiMode }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.detail || `AI service returned HTTP ${response.status}`);
@@ -108,9 +116,10 @@ export default function App() {
 
   const renderIntelligence = () => <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={8}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Heading title="Intelligence" subtitle="Research, reasoning and practical planning" />
-      <Panel><Text style={styles.eyebrow}>NOVA AI ASSISTANT</Text><Text style={styles.panelTitle}>A focused thinking partner</Text><Text style={styles.body}>Ask questions, break down a project, compare options or turn an idea into an action plan. Verify important information before acting.</Text></Panel>
-      {messages.length === 0 ? <Panel style={styles.emptyChat}><Text style={styles.emptyIcon}>✳</Text><Text style={styles.panelTitle}>Start a conversation</Text><Text style={styles.muted}>Try: “Help me plan the next milestone for NOVA.”</Text></Panel> : messages.map((m, i) => <View key={i} style={[styles.message, m.role === "user" ? styles.userMessage : styles.aiMessage]}><Text style={styles.messageRole}>{m.role === "user" ? "YOU" : "NOVA"}</Text><Text style={styles.body}>{m.content}</Text></View>)}
+      <View style={styles.chatHeader}><Heading title="Intelligence" subtitle="Choose how NOVA approaches your request" /><TouchableOpacity onPress={() => { setMessages([]); setChatError(null); }} disabled={messages.length === 0 || chatLoading} style={[styles.clearButton, (messages.length === 0 || chatLoading) && { opacity: 0.35 }]}><Text style={styles.clearButtonText}>NEW CHAT</Text></TouchableOpacity></View>
+      <View style={styles.modeWrap}>{AI_MODES.map(item => <TouchableOpacity key={item.id} onPress={() => setAiMode(item.id)} style={[styles.modeChip, aiMode === item.id && styles.modeChipActive]}><Text style={[styles.modeIcon, aiMode === item.id && styles.modeTextActive]}>{item.icon}</Text><Text style={[styles.modeLabel, aiMode === item.id && styles.modeTextActive]}>{item.label}</Text><Text style={styles.modeDetail}>{item.detail}</Text></TouchableOpacity>)}</View>
+      <Panel><Text style={styles.eyebrow}>{aiMode.toUpperCase()} MODE</Text><Text style={styles.panelTitle}>NOVA AI ASSISTANT</Text><Text style={styles.panelTitle}>A focused thinking partner</Text><Text style={styles.body}>{AI_MODES.find(item => item.id === aiMode)?.detail}. NOVA adapts its response structure to this mode while keeping uncertainty visible.</Text></Panel>
+      {messages.length === 0 ? <Panel style={styles.emptyChat}><Text style={styles.emptyIcon}>✳</Text><Text style={styles.panelTitle}>Start a conversation</Text><Text style={styles.muted}>Choose a mode, then try one of these prompts.</Text><View style={styles.suggestionRow}><TouchableOpacity style={styles.suggestionChip} onPress={() => setPrompt("Compare three ways to improve NOVA’s intelligence.")}><Text style={styles.mutedSmall}>Improve NOVA</Text></TouchableOpacity><TouchableOpacity style={styles.suggestionChip} onPress={() => setPrompt("Create an original feature idea for NOVA.")}><Text style={styles.mutedSmall}>Invent a feature</Text></TouchableOpacity></View></Panel> : messages.map((m, i) => <View key={i} style={[styles.message, m.role === "user" ? styles.userMessage : styles.aiMessage]}><Text style={styles.messageRole}>{m.role === "user" ? "YOU" : "NOVA · " + aiMode.toUpperCase()}</Text><Text style={styles.body}>{m.content}</Text></View>)}
       {chatLoading ? <Panel><ActivityIndicator color={C.cyan} /><Text style={[styles.muted, { textAlign: "center", marginTop: 8 }]}>NOVA is thinking…</Text></Panel> : null}
       {chatError ? <Text style={styles.error}>{chatError}</Text> : null}
     </ScrollView>
@@ -153,6 +162,8 @@ const styles = StyleSheet.create({
   metrics: { flexDirection: "row", gap: 10 }, metric: { flex: 1 }, panel: { backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 15, padding: 15, gap: 8 }, metricLabel: { color: C.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.8 }, metricValue: { color: C.text, fontSize: 23, fontWeight: "900" }, metricFoot: { color: C.muted, fontSize: 10 },
   sectionTitle: { color: C.muted, fontSize: 10, fontWeight: "900", letterSpacing: 1.4, marginTop: 5 }, quickGrid: { flexDirection: "row", gap: 8 }, quickCard: { flex: 1, padding: 12, borderRadius: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel, gap: 5 }, quickIcon: { color: C.cyan, fontSize: 19 }, quickTitle: { color: C.text, fontSize: 11, fontWeight: "800" },
   panelTitle: { color: C.text, fontSize: 14, fontWeight: "800" }, body: { color: "#B2C0D1", fontSize: 12, lineHeight: 19 }, heading: { gap: 4, marginBottom: 3 }, pageTitle: { color: C.text, fontSize: 26, fontWeight: "900" },
+  chatHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }, clearButton: { borderWidth: 1, borderColor: C.line, borderRadius: 9, paddingHorizontal: 10, paddingVertical: 8 }, clearButtonText: { color: C.muted, fontSize: 9, fontWeight: "900", letterSpacing: 0.8 },
+  modeWrap: { flexDirection: "row", flexWrap: "wrap", gap: 7 }, modeChip: { flexGrow: 1, minWidth: "46%", backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 12, padding: 10, gap: 3 }, modeChipActive: { backgroundColor: "#172747", borderColor: "#5279C4" }, modeIcon: { color: C.muted, fontSize: 16 }, modeLabel: { color: C.text, fontSize: 11, fontWeight: "900" }, modeTextActive: { color: "#AFCBFF" }, modeDetail: { color: C.muted, fontSize: 9 }, suggestionRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 7, marginTop: 5 }, suggestionChip: { borderWidth: 1, borderColor: C.line, backgroundColor: C.panel2, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 8 },
   emptyChat: { alignItems: "center", paddingVertical: 28, marginTop: 12 }, emptyIcon: { color: C.cyan, fontSize: 30, marginBottom: 6 }, message: { padding: 13, borderRadius: 14, borderWidth: 1, gap: 6 }, userMessage: { backgroundColor: "#123449", borderColor: "#28617A", marginLeft: 30 }, aiMessage: { backgroundColor: C.panel, borderColor: C.line, marginRight: 18 }, messageRole: { color: C.cyan, fontSize: 9, fontWeight: "900", letterSpacing: 1 },
   composer: { flexDirection: "row", gap: 8, alignItems: "flex-end", padding: 12, borderTopWidth: 1, borderTopColor: C.line, backgroundColor: C.bg }, composerInput: { flex: 1, maxHeight: 110, minHeight: 45, color: C.text, backgroundColor: C.panel, borderColor: C.line, borderWidth: 1, borderRadius: 13, paddingHorizontal: 13, paddingVertical: 11, fontSize: 13 }, sendButton: { width: 45, height: 45, borderRadius: 13, backgroundColor: "#426ED0", alignItems: "center", justifyContent: "center" }, sendText: { color: "#FFF", fontSize: 23, fontWeight: "800" }, error: { color: C.red, fontSize: 11, lineHeight: 17 },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }, statusTag: { fontSize: 9, fontWeight: "900" }, quoteCard: { gap: 10 }, quoteSymbol: { color: C.text, fontSize: 16, fontWeight: "900" }, quotePrice: { color: C.cyan, fontSize: 21, fontWeight: "900" },
