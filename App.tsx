@@ -45,16 +45,16 @@ function Heading({ title, subtitle }: { title: string; subtitle?: string }) {
 
 function MarketPriceChart({ data }: { data: Candle[] }) {
   const [width, setWidth] = useState(340);
-  const [selectedIndex, setSelectedIndex] = useState(Math.max(0, Math.min(47, data.length - 1)));
+  const [selectedIndex, setSelectedIndex] = useState(Math.max(0, data.length - 1));
   const [chartType, setChartType] = useState<"candles" | "line" | "area">("candles");
   const [showMA, setShowMA] = useState(true);
   const [showRSI, setShowRSI] = useState(false);
   const [showMACD, setShowMACD] = useState(false);
   const touchStart = useRef({ x: 0, y: 0 });
-  useEffect(() => setSelectedIndex(Math.max(0, Math.min(47, data.length - 1))), [data]);
+  useEffect(() => setSelectedIndex(Math.max(0, data.slice(-80).length - 1)), [data]);
   const points = data.slice(-80);
   const selected = points[Math.max(0, Math.min(points.length - 1, selectedIndex))];
-  const height = 242, left = 64, right = 12, top = 12, priceBottom = 158, volumeTop = 174, volumeBottom = 207;
+  const height = 318, left = 64, right = 12, top = 14, priceBottom = 220, volumeTop = 244, volumeBottom = 286;
   const plotWidth = Math.max(100, width - left - right);
   const lows = points.map(p => p.low ?? p.close).filter(Number.isFinite);
   const highs = points.map(p => p.high ?? p.close).filter(Number.isFinite);
@@ -349,23 +349,83 @@ export default function App() {
     const selectedQuote = quoteFor(selectedSymbol);
     const values = history.map(point => point.close).filter(value => Number.isFinite(value) && value > 0);
     const first = values[0], last = values[values.length - 1];
-    const chartChange = values.length > 1 ? ((last - first) / first) * 100 : 0, chartPositive = chartChange >= 0;
-    return <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.marketHero}><View style={{ flex: 1 }}><Text style={styles.eyebrow}>NOVA MARKET INTELLIGENCE</Text><Text style={styles.pageTitle}>Markets</Text><Text style={styles.muted}>Your customizable forex, crypto, stock and commodity watchlist.</Text></View><View style={styles.marketLive}><View style={styles.dot} /><Text style={styles.liveText}>DATA FEED</Text></View></View>
-      <Panel><View style={styles.rowBetween}><View><Text style={styles.panelTitle}>Market data connection</Text><Text style={styles.mutedSmall}>Twelve Data · read-only</Text></View><Text style={[styles.statusTag, { color: quotes.length ? C.green : C.red }]}>{quotes.length ? "● CONNECTED" : "● UNAVAILABLE"}</Text></View><Text style={styles.body}>{marketError || "Prices are provider-supplied. Provider timestamps are shown with each quote."}</Text><View style={styles.rowBetween}><Text style={styles.mutedSmall}>Retrieved: {timeLabel(marketFetched)}</Text><Button label={marketLoading ? "UPDATING…" : "↻ REFRESH"} onPress={refreshMarkets} disabled={marketLoading} secondary /></View></Panel>
-      <View style={styles.addMarketPanel}><Text style={styles.panelTitle}>Customize watchlist</Text><Text style={styles.mutedSmall}>Add BTC/USD, ETH/USD, SOL/USD, AAPL, USD/JPY or another provider-supported symbol.</Text><View style={styles.addTaskRow}><TextInput value={newSymbol} onChangeText={setNewSymbol} placeholder="Enter symbol…" placeholderTextColor={C.muted} autoCapitalize="characters" style={styles.taskInput} onSubmitEditing={() => addMarketSymbol(newSymbol)} returnKeyType="done" /><TouchableOpacity style={styles.addButton} onPress={() => addMarketSymbol(newSymbol)}><Text style={styles.addText}>+</Text></TouchableOpacity></View><View style={styles.quickAssets}>{["BTC/USD","ETH/USD","SOL/USD","AAPL","USD/JPY"].map(symbol => <TouchableOpacity key={symbol} style={styles.assetChip} onPress={() => addMarketSymbol(symbol)}><Text style={styles.assetChipText}>+ {symbol}</Text></TouchableOpacity>)}</View><Text style={styles.mutedSmall}>Up to 20 symbols. Provider plan determines availability.</Text></View>
-      <Text style={styles.sectionTitle}>YOUR WATCHLIST · {watchlist.length} ASSETS</Text>
-      {watchlist.map(symbol => { const q = quoteFor(symbol); const positive = Number(q?.percent_change ?? q?.change ?? 0) >= 0; return <View key={symbol} style={[styles.marketAsset, selectedSymbol === symbol && styles.marketAssetSelected]}><TouchableOpacity onPress={() => setSelectedSymbol(symbol)} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}><View style={styles.assetIcon}><Text style={styles.assetIconText}>{symbol.startsWith("BTC") ? "₿" : symbol.startsWith("ETH") ? "Ξ" : symbol.startsWith("XAU") ? "Au" : symbol.split("/")[0].slice(0,2)}</Text></View><View style={{ flex: 1, gap: 3 }}><Text style={styles.quoteSymbol}>{symbol}</Text><Text style={styles.mutedSmall}>{["BTC","ETH","SOL"].some(s => symbol.startsWith(s)) ? "CRYPTO" : symbol.startsWith("XAU") ? "COMMODITY" : symbol.includes("/") ? "FOREX" : "EQUITY / INDEX"}</Text></View><View style={{ alignItems: "flex-end", gap: 3 }}><Text style={styles.quotePrice}>{q ? q.price : "—"}</Text><Text style={[styles.changeText, { color: positive ? C.green : C.red }]}>{q?.percent_change ? (positive ? "+" : "") + q.percent_change + "%" : q ? "Change n/a" : "Price unavailable"}</Text></View></TouchableOpacity><TouchableOpacity onPress={() => { setWatchlist(current => current.filter(item => item !== symbol)); if (selectedSymbol === symbol) { const next = watchlist.filter(item => item !== symbol); setSelectedSymbol(next[0] || "BTC/USD"); } }} style={styles.removeAsset} accessibilityLabel={"Remove " + symbol + " from watchlist"}><Text style={styles.removeAssetText}>×</Text></TouchableOpacity></View>; })}
-      <Panel style={styles.chartPanel}>
-        <View style={styles.rowBetween}><View style={{ flex: 1 }}><Text style={styles.eyebrow}>PRICE HISTORY · OHLC</Text><Text style={styles.panelTitle}>{selectedSymbol}</Text></View><Text style={[styles.chartDelta, { color: chartPositive ? C.green : C.red }]}>{values.length > 1 ? (chartPositive ? "+" : "") + chartChange.toFixed(2) + "%" : "—"}</Text></View>
-        <Text style={styles.chartPrice}>{selectedQuote?.price ?? "—"}</Text>
-        <Text style={styles.mutedSmall}>{selectedQuote ? "Latest quote · " + timeLabel(selectedQuote.quote_time) : "Waiting for verified quote"}</Text>
-        <View style={styles.intervalRow}>{MARKET_INTERVALS.map(interval => <TouchableOpacity key={interval} onPress={() => setMarketInterval(interval)} style={[styles.intervalChip, marketInterval === interval && styles.intervalChipActive]}><Text style={[styles.intervalText, marketInterval === interval && styles.intervalTextActive]}>{interval === "1day" ? "1D" : interval === "4h" ? "4H" : interval === "1h" ? "1H" : "15M"}</Text></TouchableOpacity>)}</View>
-        {historyLoading ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 30 }} /> : history.length ? <MarketPriceChart data={history} /> : <View style={styles.chartEmpty}><Text style={styles.muted}>{historyError || "No verified chart history is available."}</Text></View>}
-        <View style={styles.rowBetween}><Text style={styles.mutedSmall}>{history.length ? history.length + " provider data points" : "No chart data"}</Text><Text style={styles.mutedSmall}>Source: Twelve Data</Text></View>
-      </Panel>
-      {selectedQuote ? <Panel><Text style={styles.panelTitle}>Quote details</Text><View style={styles.detailGrid}>{[["Open",selectedQuote.open],["High",selectedQuote.high],["Low",selectedQuote.low],["Previous close",selectedQuote.previous_close],["Change",selectedQuote.change],["Volume",selectedQuote.volume]].map(([label,value]) => <View key={label} style={styles.detailCell}><Text style={styles.mutedSmall}>{label}</Text><Text style={styles.detailValue}>{value || "—"}</Text></View>)}</View><Text style={styles.mutedSmall}>Provider time: {timeLabel(selectedQuote.quote_time)}</Text></Panel> : null}
-      <Panel><Text style={styles.panelTitle}>Data integrity</Text><Text style={styles.body}>Only provider-returned prices and history are shown. Quotes may be delayed or unavailable depending on your provider plan. NOVA does not execute trades or connect to wallets.</Text></Panel>
+    const chartChange = values.length > 1 ? ((last - first) / first) * 100 : 0;
+    const chartPositive = chartChange >= 0;
+    return <ScrollView contentContainerStyle={[styles.content, { paddingTop: 12, gap: 14 }]}>
+      <View style={styles.marketHero}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.eyebrow}>NOVA · MARKET TERMINAL</Text>
+          <Text style={styles.pageTitle}>Markets</Text>
+          <Text style={styles.muted}>Live quotes and interactive chart analysis.</Text>
+        </View>
+        <View style={[styles.marketLive, { alignSelf: "flex-start" }]}>
+          <View style={[styles.dot, { backgroundColor: quotes.length ? C.green : C.red }]} />
+          <Text style={styles.liveText}>{quotes.length ? "CONNECTED" : "OFFLINE"}</Text>
+        </View>
+      </View>
+
+      <View style={[styles.chartPanel, { padding: 15, borderRadius: 19, borderWidth: 1, borderColor: "#344A70", backgroundColor: "#0D1728", gap: 12 }]}>
+        <View style={styles.rowBetween}>
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={styles.eyebrow}>SELECTED INSTRUMENT</Text>
+            <Text style={{ color: C.text, fontSize: 20, fontWeight: "900", letterSpacing: .5 }}>{selectedSymbol}</Text>
+            <Text style={styles.mutedSmall}>{selectedSymbol.includes("/") ? (["BTC","ETH","SOL"].some(s => selectedSymbol.startsWith(s)) ? "CRYPTO PAIR" : "FOREX / COMMODITY PAIR") : "EQUITY / INDEX"}</Text>
+          </View>
+          <View style={{ alignItems: "flex-end", gap: 3 }}>
+            <Text style={{ color: C.text, fontSize: 25, fontWeight: "900", fontVariant: ["tabular-nums"] }}>{selectedQuote?.price ?? "—"}</Text>
+            <Text style={[styles.chartDelta, { color: chartPositive ? C.green : C.red }]}>{values.length > 1 ? (chartPositive ? "+" : "") + chartChange.toFixed(2) + "% period" : selectedQuote?.percent_change ? selectedQuote.percent_change + "% today" : "Change —"}</Text>
+          </View>
+        </View>
+        <View style={styles.rowBetween}>
+          <Text style={styles.panelTitle}>Advanced chart</Text>
+          <Text style={styles.mutedSmall}>{history.length ? history.length + " candles" : "Awaiting history"}</Text>
+        </View>
+        <View style={[styles.intervalRow, { marginTop: 0 }]}>
+          {MARKET_INTERVALS.map(interval => <TouchableOpacity key={interval} onPress={() => setMarketInterval(interval)} style={[styles.intervalChip, marketInterval === interval && styles.intervalChipActive, { flex: 1 }]}><Text style={[styles.intervalText, marketInterval === interval && styles.intervalTextActive]}>{interval === "1day" ? "1D" : interval === "4h" ? "4H" : interval === "1h" ? "1H" : "15M"}</Text></TouchableOpacity>)}
+        </View>
+        {historyLoading ? <View style={{ height: 310, alignItems: "center", justifyContent: "center" }}><ActivityIndicator color={C.cyan} /><Text style={styles.mutedSmall}>Loading provider history…</Text></View> : history.length ? <MarketPriceChart data={history} /> : <View style={[styles.chartEmpty, { minHeight: 250, justifyContent: "center" }]}><Text style={styles.muted}>{historyError || "No verified chart history is available."}</Text></View>}
+        <View style={{ borderTopWidth: 1, borderTopColor: C.line, paddingTop: 9, flexDirection: "row", justifyContent: "space-between" }}>
+          <Text style={styles.mutedSmall}>SOURCE · TWELVE DATA</Text>
+          <Text style={styles.mutedSmall}>{selectedQuote ? timeLabel(selectedQuote.quote_time) : "NO QUOTE"}</Text>
+        </View>
+      </View>
+
+      <View style={{ gap: 9 }}>
+        <View style={styles.rowBetween}><Text style={styles.sectionTitle}>MARKET SNAPSHOT</Text><Text style={styles.mutedSmall}>PROVIDER DATA</Text></View>
+        <View style={styles.detailGrid}>
+          {[[ "OPEN", selectedQuote?.open ],[ "HIGH", selectedQuote?.high ],[ "LOW", selectedQuote?.low ],[ "PREVIOUS CLOSE", selectedQuote?.previous_close ],[ "CHANGE", selectedQuote?.change ],[ "VOLUME", selectedQuote?.volume ]].map(([label,value]) => <View key={label} style={[styles.detailCell, { backgroundColor: "#111E30", borderRadius: 11, padding: 11, borderWidth: 1, borderColor: C.line }]}><Text style={styles.mutedSmall}>{label}</Text><Text style={styles.detailValue}>{value || "—"}</Text></View>)}
+        </View>
+      </View>
+
+      <View style={{ gap: 9 }}>
+        <View style={styles.rowBetween}><Text style={styles.sectionTitle}>INSTRUMENTS</Text><Text style={styles.mutedSmall}>{watchlist.length} WATCHING</Text></View>
+        <View style={styles.addMarketPanel}>
+          <Text style={styles.panelTitle}>Find an instrument</Text>
+          <View style={styles.addTaskRow}>
+            <TextInput value={newSymbol} onChangeText={setNewSymbol} placeholder="Search symbol e.g. BTC/USD" placeholderTextColor={C.muted} autoCapitalize="characters" style={styles.taskInput} onSubmitEditing={() => addMarketSymbol(newSymbol)} returnKeyType="done" />
+            <TouchableOpacity style={styles.addButton} onPress={() => addMarketSymbol(newSymbol)}><Text style={styles.addText}>+</Text></TouchableOpacity>
+          </View>
+          <View style={styles.quickAssets}>{["BTC/USD","ETH/USD","SOL/USD","AAPL","USD/JPY"].map(symbol => <TouchableOpacity key={symbol} style={styles.assetChip} onPress={() => addMarketSymbol(symbol)}><Text style={styles.assetChipText}>+ {symbol}</Text></TouchableOpacity>)}</View>
+          <Text style={styles.mutedSmall}>Twelve Data support and plan limits determine availability. {marketError || ""}</Text>
+        </View>
+        {watchlist.map(symbol => {
+          const q = quoteFor(symbol);
+          const positive = Number(q?.percent_change ?? q?.change ?? 0) >= 0;
+          return <View key={symbol} style={[styles.marketAsset, selectedSymbol === symbol && styles.marketAssetSelected]}>
+            <TouchableOpacity onPress={() => setSelectedSymbol(symbol)} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View style={styles.assetIcon}><Text style={styles.assetIconText}>{symbol.startsWith("BTC") ? "₿" : symbol.startsWith("ETH") ? "Ξ" : symbol.startsWith("XAU") ? "Au" : symbol.split("/")[0].slice(0,2)}</Text></View>
+              <View style={{ flex: 1, gap: 3 }}><Text style={styles.quoteSymbol}>{symbol}</Text><Text style={styles.mutedSmall}>{["BTC","ETH","SOL"].some(s => symbol.startsWith(s)) ? "CRYPTO" : symbol.startsWith("XAU") ? "COMMODITY" : symbol.includes("/") ? "FOREX" : "EQUITY / INDEX"}</Text></View>
+              <View style={{ alignItems: "flex-end", gap: 3 }}><Text style={styles.quotePrice}>{q ? q.price : "—"}</Text><Text style={[styles.changeText, { color: positive ? C.green : C.red }]}>{q?.percent_change ? (positive ? "+" : "") + q.percent_change + "%" : q ? "Change n/a" : "Price unavailable"}</Text></View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setWatchlist(current => current.filter(item => item !== symbol)); if (selectedSymbol === symbol) { const nextList = watchlist.filter(item => item !== symbol); setSelectedSymbol(nextList[0] || "BTC/USD"); } }} style={styles.removeAsset} accessibilityLabel={"Remove " + symbol + " from watchlist"}><Text style={styles.removeAssetText}>×</Text></TouchableOpacity>
+          </View>;
+        })}
+      </View>
+      <View style={styles.rowBetween}>
+        <Text style={styles.mutedSmall}>DATA FEED · TWELVE DATA · READ ONLY</Text>
+        <TouchableOpacity onPress={refreshMarkets} disabled={marketLoading}><Text style={{ color: C.cyan, fontSize: 10, fontWeight: "900" }}>{marketLoading ? "REFRESHING…" : "↻ REFRESH DATA"}</Text></TouchableOpacity>
+      </View>
+      <Text style={styles.mutedSmall}>NOVA displays provider-supplied market information for research and learning. Quotes can be delayed or unavailable. No trades or wallet transactions are supported.</Text>
     </ScrollView>;
   };
 
