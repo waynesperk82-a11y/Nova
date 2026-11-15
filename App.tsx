@@ -77,8 +77,8 @@ function MarketPriceChart({ data }: { data: Candle[] }) {
   return <View>
     <View
       onLayout={event => setWidth(Math.max(280, event.nativeEvent.layout.width))}
-      onStartShouldSetResponder={() => true}
-      onMoveShouldSetResponder={() => true}
+      onTouchStart={choosePoint}
+      onMoveShouldSetResponder={(_, gestureState) => Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2}
       onResponderGrant={choosePoint}
       onResponderMove={choosePoint}
       style={{ height, width: "100%" }}
