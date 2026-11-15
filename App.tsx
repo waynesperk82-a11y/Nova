@@ -147,6 +147,8 @@ export default function App() {
   const [prompt, setPrompt] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [coreStatus, setCoreStatus] = useState<{status?: string; configured?: boolean; provider?: string; model?: string; chat_modes?: string[] } | null>(null);
+  const [coreStatusError, setCoreStatusError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([
     { id: 1, title: "Connect and verify the NOVA backend", done: false },
     { id: 2, title: "Review the project roadmap", done: false },
@@ -182,6 +184,19 @@ export default function App() {
     } catch (e) {
       if (requestId === historyRequestId.current) { setHistory([]); setHistoryError(e instanceof Error ? e.message : "Could not load price history."); }
     } finally { if (requestId === historyRequestId.current) setHistoryLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (!API_BASE) { setCoreStatusError("Backend URL is not configured."); return; }
+    let active = true;
+    fetch(`${API_BASE}/api/core/status`)
+      .then(async response => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.detail || "Could not read NOVA core status.");
+        if (active) { setCoreStatus(body); setCoreStatusError(null); }
+      })
+      .catch(error => { if (active) setCoreStatusError(error instanceof Error ? error.message : "NOVA core status unavailable."); });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => { refreshMarkets(); }, [refreshMarkets]);
@@ -222,31 +237,102 @@ export default function App() {
   };
 
   const renderHome = () => <ScrollView contentContainerStyle={styles.content}>
-    <View style={styles.hero}><View style={styles.brandMark}><Text style={styles.brandMarkText}>N</Text></View><View style={{ flex: 1 }}><Text style={styles.brand}>NOVA <Text style={styles.cyan}>2.0</Text></Text><Text style={styles.muted}>Your personal intelligence workspace</Text></View><View style={styles.livePill}><View style={styles.dot} /><Text style={styles.liveText}>NOVA 2.0</Text></View></View>
-    <View style={styles.welcome}><Text style={styles.eyebrow}>YOUR INTELLIGENCE, IN ONE PLACE</Text><Text style={styles.welcomeTitle}>Good to see you.</Text><Text style={styles.muted}>Think deeply, explore ideas and move your projects forward with NOVA.</Text><Button label="START THINKING  →" onPress={() => setTab("Intelligence")} /></View>
-    <View style={styles.metrics}><Panel style={styles.metric}><Text style={styles.metricLabel}>WORKSPACE TASKS</Text><Text style={styles.metricValue}>{completedTasks}/{tasks.length}</Text><Text style={styles.metricFoot}>Completed</Text></Panel><Panel style={styles.metric}><Text style={styles.metricLabel}>MARKET FEED</Text><Text style={[styles.metricValue, { color: quotes.length ? C.green : C.muted }]}>{quotes.length ? "LIVE DATA" : "OFFLINE"}</Text><Text style={styles.metricFoot}>Provider dependent</Text></Panel></View>
-    <Text style={styles.sectionTitle}>YOUR AI WORKSPACE</Text>
-    <View style={styles.quickGrid}>{(["Intelligence", "Markets", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} style={styles.quickCard} onPress={() => setTab(item)}><Text style={styles.quickIcon}>{["✳", "⌁", "▤"][i]}</Text><Text style={styles.quickTitle}>{item}</Text><Text style={styles.mutedSmall}>{["Ask and explore", "Read-only quotes", "Projects and tasks"][i]}</Text></TouchableOpacity>)}</View>
-    <Text style={styles.sectionTitle}>TODAY AT A GLANCE</Text>
-    <View style={styles.quickGrid}>
-      <TouchableOpacity style={styles.quickCard} onPress={() => setTab("Intelligence")}><Text style={styles.quickIcon}>✧</Text><Text style={styles.quickTitle}>Think</Text><Text style={styles.mutedSmall}>Work through a question</Text></TouchableOpacity>
-      <TouchableOpacity style={styles.quickCard} onPress={() => setTab("Intelligence")}><Text style={[styles.quickIcon, { color: C.purple }]}>◎</Text><Text style={styles.quickTitle}>Create</Text><Text style={styles.mutedSmall}>Shape a new idea</Text></TouchableOpacity>
-      <TouchableOpacity style={styles.quickCard} onPress={() => setTab("Workspace")}><Text style={styles.quickIcon}>▤</Text><Text style={styles.quickTitle}>Organize</Text><Text style={styles.mutedSmall}>Move tasks forward</Text></TouchableOpacity>
+    <View style={styles.hero}>
+      <View style={styles.brandMark}><Text style={styles.brandMarkText}>N</Text></View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={styles.brand}>NOVA <Text style={styles.cyan}>2.1</Text></Text>
+        <Text style={styles.muted}>PERSONAL INTELLIGENCE WORKSPACE</Text>
+      </View>
+      <View style={[styles.livePill, { borderColor: coreStatus?.configured ? "#285747" : "#73533A" }]}>
+        <View style={[styles.dot, { backgroundColor: coreStatus?.configured ? C.green : "#E8B36B" }]} />
+        <Text style={[styles.liveText, { color: coreStatus?.configured ? C.green : "#E8B36B" }]}>{coreStatusLoading ? "CHECKING" : coreStatus?.configured ? "CORE READY" : "CORE SETUP"}</Text>
+      </View>
     </View>
-    <Panel><View style={styles.rowBetween}><Text style={styles.panelTitle}>Your next step</Text><Text style={styles.statusTag}>WORKSPACE</Text></View><Text style={styles.body}>{tasks.find(t => !t.done)?.title || "All current tasks are complete. Add a new milestone in Workspace."}</Text><Button label="OPEN WORKSPACE  →" onPress={() => setTab("Workspace")} secondary /></Panel>
-    <Panel><Text style={styles.panelTitle}>NOVA operating principles</Text><Text style={styles.body}>Clear answers · Transparent data · Human approval for important actions. NOVA does not execute trades or control physical equipment.</Text></Panel>
+    <View style={styles.welcome}>
+      <Text style={styles.eyebrow}>YOUR PERSONAL INTELLIGENCE HUB</Text>
+      <Text style={[styles.welcomeTitle, { fontSize: 29, lineHeight: 35 }]}>Think clearly.{"\n"}Build boldly.</Text>
+      <Text style={styles.muted}>Reason through questions, develop ideas, organize projects and explore live market data in one focused workspace.</Text>
+      <Button label="OPEN NOVA INTELLIGENCE  ↗" onPress={() => setTab("Intelligence")} />
+      <View style={styles.heroFoot}><Text style={styles.mutedSmall}>THINK · RESEARCH · CREATE · PLAN</Text><Text style={styles.mutedSmall}>NOVA 2.1</Text></View>
+    </View>
+    <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>LIVE SERVICE OVERVIEW</Text><Text style={styles.mutedSmall}>VERIFIED STATUS</Text></View>
+    <View style={styles.metrics}>
+      <Panel style={styles.metric}>
+        <View style={styles.rowBetween}><Text style={styles.metricLabel}>NOVA CORE</Text><Text style={styles.quickIcon}>✳</Text></View>
+        <Text style={[styles.metricValue, { color: coreStatus?.configured ? C.green : "#E8B36B", fontSize: 16 }]}>{coreStatusLoading ? "CHECKING" : coreStatus?.configured ? "CONFIGURED" : "SETUP NEEDED"}</Text>
+        <Text style={styles.metricFoot}>{coreStatus?.model ? "Model · " + coreStatus.model : coreStatusError || "AI service status"}</Text>
+      </Panel>
+      <Panel style={styles.metric}>
+        <View style={styles.rowBetween}><Text style={styles.metricLabel}>MARKET DATA</Text><Text style={styles.quickIcon}>⌁</Text></View>
+        <Text style={[styles.metricValue, { color: quotes.length ? C.green : C.muted, fontSize: 16 }]}>{quotes.length ? "CONNECTED" : "CHECK FEED"}</Text>
+        <Text style={styles.metricFoot}>{quotes.length + " verified quotes loaded"}</Text>
+      </Panel>
+    </View>
+    <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>YOUR NOVA WORKSPACE</Text><Text style={styles.mutedSmall}>OPEN A MODULE</Text></View>
+    <TouchableOpacity style={styles.featureCard} onPress={() => setTab("Intelligence")}>
+      <View style={styles.featureIcon}><Text style={styles.quickIcon}>✳</Text></View>
+      <View style={{ flex: 1, gap: 4 }}><Text style={styles.quickTitle}>Intelligence</Text><Text style={styles.mutedSmall}>Ask questions, explore ideas and work through complex problems using your connected AI service.</Text></View>
+      <Text style={styles.cyan}>↗</Text>
+    </TouchableOpacity>
+    <View style={styles.quickGrid}>
+      <TouchableOpacity style={styles.quickCard} onPress={() => setTab("Markets")}><Text style={styles.quickIcon}>⌁</Text><Text style={styles.quickTitle}>Markets</Text><Text style={styles.mutedSmall}>Quotes and charts</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.quickCard} onPress={() => setTab("Workspace")}><Text style={styles.quickIcon}>▤</Text><Text style={styles.quickTitle}>Workspace</Text><Text style={styles.mutedSmall}>Tasks and projects</Text></TouchableOpacity>
+      <TouchableOpacity style={styles.quickCard} onPress={() => setTab("Intelligence")}><Text style={styles.quickIcon}>◎</Text><Text style={styles.quickTitle}>Create</Text><Text style={styles.mutedSmall}>Develop new ideas</Text></TouchableOpacity>
+    </View>
+    <Panel>
+      <View style={styles.rowBetween}><Text style={styles.panelTitle}>Your next step</Text><Text style={styles.statusTag}>WORKSPACE</Text></View>
+      <Text style={styles.body}>{tasks.find(t => !t.done)?.title || "All current tasks are complete. Add a new milestone in Workspace."}</Text>
+      <Button label="CONTINUE IN WORKSPACE  →" onPress={() => setTab("Workspace")} secondary />
+    </Panel>
+    <Panel><Text style={styles.panelTitle}>Built around clarity and control</Text><Text style={styles.body}>NOVA shows provider-backed market data, keeps AI responses advisory, and leaves important decisions in your hands.</Text></Panel>
   </ScrollView>;
 
   const renderIntelligence = () => <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={8}>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={styles.chatHeader}><Heading title="Intelligence" subtitle="Choose how NOVA approaches your request" /><TouchableOpacity onPress={() => { setMessages([]); setChatError(null); }} disabled={messages.length === 0 || chatLoading} style={[styles.clearButton, (messages.length === 0 || chatLoading) && { opacity: 0.35 }]}><Text style={styles.clearButtonText}>NEW CHAT</Text></TouchableOpacity></View>
+      <View style={styles.chatHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.eyebrow}>NOVA 2.1 · PERSONAL INTELLIGENCE</Text>
+          <Text style={styles.pageTitle}>Intelligence</Text>
+          <Text style={styles.muted}>A focused space to think, learn, create and plan.</Text>
+        </View>
+        <TouchableOpacity onPress={() => { setMessages([]); setChatError(null); }} disabled={messages.length === 0 || chatLoading} style={[styles.clearButton, (messages.length === 0 || chatLoading) && { opacity: 0.35 }]}><Text style={styles.clearButtonText}>NEW CHAT</Text></TouchableOpacity>
+      </View>
+      <View style={styles.aiStatusBar}>
+        <View style={[styles.dot, { backgroundColor: coreStatus?.configured ? C.green : "#E8B36B" }]} />
+        <Text style={styles.aiStatusText}>{coreStatus?.configured ? "AI CORE CONNECTED" : coreStatusLoading ? "CHECKING AI CORE" : "AI CORE NEEDS SETUP"}</Text>
+        <Text style={styles.aiModelText}>{coreStatus?.model || "Model not confirmed"}</Text>
+      </View>
+      <Text style={styles.sectionTitle}>CHOOSE YOUR APPROACH</Text>
       <View style={styles.modeWrap}>{AI_MODES.map(item => <TouchableOpacity key={item.id} onPress={() => setAiMode(item.id)} style={[styles.modeChip, aiMode === item.id && styles.modeChipActive]}><Text style={[styles.modeIcon, aiMode === item.id && styles.modeTextActive]}>{item.icon}</Text><Text style={[styles.modeLabel, aiMode === item.id && styles.modeTextActive]}>{item.label}</Text><Text style={styles.modeDetail}>{item.detail}</Text></TouchableOpacity>)}</View>
-      <Panel><Text style={styles.eyebrow}>{aiMode.toUpperCase()} MODE</Text><Text style={styles.panelTitle}>NOVA AI ASSISTANT</Text><Text style={styles.panelTitle}>A focused thinking partner</Text><Text style={styles.body}>{AI_MODES.find(item => item.id === aiMode)?.detail}. NOVA adapts its response structure to this mode while keeping uncertainty visible.</Text></Panel>
-      {messages.length === 0 ? <Panel style={styles.emptyChat}><Text style={styles.emptyIcon}>✳</Text><Text style={styles.panelTitle}>Start a conversation</Text><Text style={styles.muted}>Choose a mode, then try one of these prompts.</Text><View style={styles.suggestionRow}><TouchableOpacity style={styles.suggestionChip} onPress={() => setPrompt("Compare three ways to improve NOVA’s intelligence.")}><Text style={styles.mutedSmall}>Improve NOVA</Text></TouchableOpacity><TouchableOpacity style={styles.suggestionChip} onPress={() => setPrompt("Create an original feature idea for NOVA.")}><Text style={styles.mutedSmall}>Invent a feature</Text></TouchableOpacity></View></Panel> : messages.map((m, i) => <View key={i} style={[styles.message, m.role === "user" ? styles.userMessage : styles.aiMessage]}><Text style={styles.messageRole}>{m.role === "user" ? "YOU" : "NOVA"}</Text><Text style={styles.body}>{m.content}</Text></View>)}
-      {chatLoading ? <Panel><ActivityIndicator color={C.cyan} /><Text style={[styles.muted, { textAlign: "center", marginTop: 8 }]}>NOVA is thinking…</Text></Panel> : null}
+      <Panel style={styles.aiModePanel}>
+        <Text style={styles.eyebrow}>{aiMode.toUpperCase()} MODE ACTIVE</Text>
+        <Text style={styles.panelTitle}>{aiMode === "think" ? "Reason through the hard parts." : aiMode === "research" ? "Separate facts from uncertainty." : aiMode === "create" ? "Turn ideas into original work." : "Turn goals into clear steps."}</Text>
+        <Text style={styles.body}>{aiMode === "think" ? "Compare options, test assumptions and get a clear rationale." : aiMode === "research" ? "Organize what is known, what is uncertain and what needs verification. Live web research is not enabled in this chat." : aiMode === "create" ? "Generate concepts, drafts and alternatives that follow your direction." : "Build ordered steps, milestones and priorities for your project."}</Text>
+      </Panel>
+      {messages.length === 0 ? <View style={styles.aiWelcome}>
+        <View style={styles.aiOrb}><Text style={styles.aiOrbText}>N</Text></View>
+        <Text style={styles.panelTitle}>What are we working on?</Text>
+        <Text style={[styles.muted, { textAlign: "center" }]}>Start with a question or choose a prompt to give NOVA direction.</Text>
+        <View style={styles.promptGrid}>
+          <TouchableOpacity style={styles.promptCard} onPress={() => setPrompt("Help me break down a difficult problem and compare possible solutions.")}><Text style={styles.quickIcon}>◈</Text><Text style={styles.quickTitle}>Solve a problem</Text><Text style={styles.mutedSmall}>Analyze options and trade-offs</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.promptCard} onPress={() => setPrompt("Help me learn a new topic with a clear explanation and examples.")}><Text style={styles.quickIcon}>⌕</Text><Text style={styles.quickTitle}>Learn something</Text><Text style={styles.mutedSmall}>Build understanding step by step</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.promptCard} onPress={() => setPrompt("Help me develop an original idea into a practical project.")}><Text style={styles.quickIcon}>✧</Text><Text style={styles.quickTitle}>Create an idea</Text><Text style={styles.mutedSmall}>Explore original directions</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.promptCard} onPress={() => setPrompt("Turn my goal into a realistic plan with milestones and next actions.")}><Text style={styles.quickIcon}>▤</Text><Text style={styles.quickTitle}>Make a plan</Text><Text style={styles.mutedSmall}>Set priorities and milestones</Text></TouchableOpacity>
+        </View>
+      </View> : <View style={styles.conversation}>
+        {messages.map((m, i) => <View key={i} style={[styles.message, m.role === "user" ? styles.userMessage : styles.aiMessage]}>
+          <View style={styles.rowBetween}><Text style={styles.messageRole}>{m.role === "user" ? "YOU" : "NOVA"}</Text><Text style={styles.mutedSmall}>{m.role === "assistant" ? aiMode.toUpperCase() : ""}</Text></View>
+          <Text style={styles.body}>{m.content}</Text>
+        </View>)}
+      </View>}
+      {chatLoading ? <Panel><ActivityIndicator color={C.cyan} /><Text style={[styles.muted, { textAlign: "center", marginTop: 8 }]}>NOVA is working through your request…</Text></Panel> : null}
       {chatError ? <Text style={styles.error}>{chatError}</Text> : null}
+      <Text style={styles.mutedSmall}>NOVA uses the configured AI model and recent conversation turns. Research mode does not browse the live web yet.</Text>
     </ScrollView>
-    <View style={styles.composer}><TextInput value={prompt} onChangeText={setPrompt} placeholder="Ask NOVA anything…" placeholderTextColor={C.muted} multiline style={styles.composerInput} /><TouchableOpacity onPress={sendMessage} disabled={!prompt.trim() || chatLoading} style={[styles.sendButton, (!prompt.trim() || chatLoading) && { opacity: 0.45 }]}><Text style={styles.sendText}>↑</Text></TouchableOpacity></View>
+    <View style={styles.composer}>
+      <TextInput value={prompt} onChangeText={setPrompt} placeholder="Message NOVA…" placeholderTextColor={C.muted} multiline style={styles.composerInput} />
+      <TouchableOpacity onPress={sendMessage} disabled={!prompt.trim() || chatLoading} style={[styles.sendButton, (!prompt.trim() || chatLoading) && { opacity: 0.45 }]}><Text style={styles.sendText}>↑</Text></TouchableOpacity>
+    </View>
   </KeyboardAvoidingView>;
 
   const renderMarkets = () => {
@@ -292,6 +378,21 @@ const styles = StyleSheet.create({
   topBrand: { color: C.text, fontSize: 19, fontWeight: "900", letterSpacing: 2 }, topMeta: { color: C.muted, fontSize: 9, letterSpacing: 1.2, fontWeight: "700" },
   content: { padding: 18, paddingBottom: 28, gap: 14 },
   hero: { flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 5 },
+  heroFoot: { flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#2D4563", paddingTop: 10, marginTop: 3 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  featureCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 15, borderRadius: 15, borderWidth: 1, borderColor: "#344A70", backgroundColor: "#111D30" },
+  featureIcon: { width: 42, height: 42, borderRadius: 13, backgroundColor: "#1B2D4C", alignItems: "center", justifyContent: "center" },
+  aiStatusBar: { flexDirection: "row", alignItems: "center", gap: 7, borderWidth: 1, borderColor: C.line, borderRadius: 11, backgroundColor: "#0E1928", padding: 11 },
+  aiStatusText: { color: C.green, fontSize: 9, fontWeight: "900", letterSpacing: 0.7, flex: 1 },
+  aiModelText: { color: C.muted, fontSize: 9 },
+  aiModePanel: { backgroundColor: "#12233A", borderColor: "#36527B" },
+  aiWelcome: { alignItems: "center", gap: 11, paddingVertical: 14 },
+  aiOrb: { width: 58, height: 58, borderRadius: 20, backgroundColor: "#183252", borderWidth: 1, borderColor: "#4D79B6", alignItems: "center", justifyContent: "center" },
+  aiOrbText: { color: "#C5DFFF", fontSize: 34, fontWeight: "900" },
+  promptGrid: { width: "100%", flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  promptCard: { width: "48%", flexGrow: 1, minHeight: 104, padding: 12, borderRadius: 13, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel, gap: 5 },
+  conversation: { gap: 10 },
+
   brandMark: { width: 42, height: 42, borderRadius: 13, backgroundColor: "#273D68", borderWidth: 1, borderColor: "#496BAA", alignItems: "center", justifyContent: "center" }, brandMarkText: { color: "#DCE8FF", fontWeight: "900", fontSize: 25 },
   brand: { color: C.text, fontSize: 18, fontWeight: "900", letterSpacing: 1.5 }, cyan: { color: C.cyan },
   livePill: { borderWidth: 1, borderColor: "#285747", borderRadius: 20, paddingHorizontal: 9, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 5 }, dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.green }, liveText: { color: C.green, fontSize: 8, fontWeight: "900" },
