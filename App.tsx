@@ -46,6 +46,7 @@ function Heading({ title, subtitle }: { title: string; subtitle?: string }) {
 function MarketPriceChart({ data }: { data: Candle[] }) {
   const [width, setWidth] = useState(340);
   const [selectedIndex, setSelectedIndex] = useState(Math.max(0, Math.min(47, data.length - 1)));
+  const touchStart = useRef({ x: 0, y: 0 });
   useEffect(() => setSelectedIndex(Math.max(0, Math.min(47, data.length - 1))), [data]);
   const points = data.slice(-48);
   const selected = points[Math.max(0, Math.min(points.length - 1, selectedIndex))];
@@ -77,8 +78,8 @@ function MarketPriceChart({ data }: { data: Candle[] }) {
   return <View>
     <View
       onLayout={event => setWidth(Math.max(280, event.nativeEvent.layout.width))}
-      onTouchStart={choosePoint}
-      onMoveShouldSetResponder={(_, gestureState) => Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2}
+      onTouchStart={event => { touchStart.current = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY }; choosePoint(event); }}
+      onMoveShouldSetResponder={event => Math.abs(event.nativeEvent.pageX - touchStart.current.x) > Math.abs(event.nativeEvent.pageY - touchStart.current.y) * 1.2}
       onResponderGrant={choosePoint}
       onResponderMove={choosePoint}
       style={{ height, width: "100%" }}
