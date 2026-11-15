@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import Svg, { Circle, Line, Rect, Text as SvgText, Polyline } from "react-native-svg";
+import Svg, { Circle, Line, Rect, Text as SvgText } from "react-native-svg";
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
