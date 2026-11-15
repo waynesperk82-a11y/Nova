@@ -149,6 +149,8 @@ export default function App() {
   const [chatError, setChatError] = useState<string | null>(null);
   const [coreStatus, setCoreStatus] = useState<{status?: string; configured?: boolean; provider?: string; model?: string; chat_modes?: string[] } | null>(null);
   const [coreStatusError, setCoreStatusError] = useState<string | null>(null);
+  const [coreStatusLoading, setCoreStatusLoading] = useState(true);
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([
     { id: 1, title: "Connect and verify the NOVA backend", done: false },
     { id: 2, title: "Review the project roadmap", done: false },
@@ -187,15 +189,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!API_BASE) { setCoreStatusError("Backend URL is not configured."); return; }
+    if (!API_BASE) { setCoreStatusError("Backend URL is not configured."); setCoreStatusLoading(false); return; }
     let active = true;
     fetch(`${API_BASE}/api/core/status`)
       .then(async response => {
         const body = await response.json();
         if (!response.ok) throw new Error(body.detail || "Could not read NOVA core status.");
-        if (active) { setCoreStatus(body); setCoreStatusError(null); }
+        if (active) { setCoreStatus(body); setCoreStatusError(null); setCoreStatusLoading(false); }
       })
-      .catch(error => { if (active) setCoreStatusError(error instanceof Error ? error.message : "NOVA core status unavailable."); });
+      .catch(error => { if (active) { setCoreStatusError(error instanceof Error ? error.message : "NOVA core status unavailable."); setCoreStatusLoading(false); } });
     return () => { active = false; };
   }, []);
 
@@ -369,12 +371,15 @@ export default function App() {
   </ScrollView>;
 
   const screens: Record<Tab, () => React.ReactNode> = { Dashboard: renderHome, Intelligence: renderIntelligence, Markets: renderMarkets, Workspace: renderWorkspace };
-  return <SafeAreaView style={styles.safe}><StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View><View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Dashboard", "Intelligence", "Markets", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => setTab(item)} style={styles.navItem}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["◫", "✳", "⌁", "▤"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
+  const navigate = (destination: Tab) => { setTab(destination); setNavMenuOpen(false); };
+  return <SafeAreaView style={styles.safe}><StatusBar barStyle="light-content" backgroundColor={C.bg} /><View style={styles.topBar}><TouchableOpacity style={styles.topMenuButton} onPress={() => setNavMenuOpen(open => !open)} accessibilityLabel="Open navigation menu"><Text style={styles.menuGlyph}>{navMenuOpen ? "×" : "☰"}</Text><Text style={styles.topBrand}>NOVA<Text style={styles.cyan}>.</Text></Text></TouchableOpacity><Text style={styles.topMeta}>PERSONAL INTELLIGENCE</Text></View>{navMenuOpen ? <View style={styles.navDrawer}><View style={styles.drawerHeading}><Text style={styles.drawerTitle}>Navigate NOVA</Text><Text style={styles.mutedSmall}>YOUR WORKSPACE</Text></View>{([{name:"Dashboard" as Tab,icon:"◫",desc:"Overview and service status"},{name:"Intelligence" as Tab,icon:"✳",desc:"Think, research, create and plan"},{name:"Markets" as Tab,icon:"⌁",desc:"Quotes, watchlists and charts"},{name:"Workspace" as Tab,icon:"▤",desc:"Projects and tasks"}]).map(item => <TouchableOpacity key={item.name} onPress={() => navigate(item.name)} style={[styles.drawerItem, tab === item.name && styles.drawerItemActive]}><Text style={styles.drawerIcon}>{item.icon}</Text><View style={{flex:1,gap:2}}><Text style={[styles.drawerItemTitle,tab===item.name&&{color:C.cyan}]}>{item.name}</Text><Text style={styles.mutedSmall}>{item.desc}</Text></View><Text style={styles.drawerArrow}>›</Text></TouchableOpacity>)}</View> : null}<View style={{ flex: 1 }}>{screens[tab]()}</View><View style={styles.nav}>{(["Dashboard", "Intelligence", "Markets", "Workspace"] as Tab[]).map((item, i) => <TouchableOpacity key={item} onPress={() => navigate(item)} style={[styles.navItem, tab === item && styles.navItemActive]}><Text style={[styles.navIcon, tab === item && { color: C.cyan }]}>{["◫", "✳", "⌁", "▤"][i]}</Text><Text style={[styles.navLabel, tab === item && styles.navActive]}>{item}</Text></TouchableOpacity>)}</View></SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
   topBar: { height: 58, paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#1B293B" },
+  topMenuButton: { flexDirection: "row", alignItems: "center", gap: 10 }, menuGlyph: { color: C.cyan, fontSize: 21, fontWeight: "800", width: 25 },
+  navDrawer: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, backgroundColor: "#101B2C", borderBottomWidth: 1, borderBottomColor: C.line, gap: 7 }, drawerHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 4, paddingBottom: 5 }, drawerTitle: { color: C.text, fontSize: 15, fontWeight: "900" }, drawerItem: { flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 12, borderWidth: 1, borderColor: "transparent", padding: 10, backgroundColor: "#131F31" }, drawerItemActive: { borderColor: "#466BA8", backgroundColor: "#1A2C49" }, drawerIcon: { color: C.cyan, fontSize: 20, width: 25, textAlign: "center" }, drawerItemTitle: { color: C.text, fontSize: 12, fontWeight: "800" }, drawerArrow: { color: C.muted, fontSize: 22 }, navItemActive: { backgroundColor: "#172742", borderRadius: 12, paddingVertical: 7 },
   topBrand: { color: C.text, fontSize: 19, fontWeight: "900", letterSpacing: 2 }, topMeta: { color: C.muted, fontSize: 9, letterSpacing: 1.2, fontWeight: "700" },
   content: { padding: 18, paddingBottom: 28, gap: 14 },
   hero: { flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 5 },
