@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Svg, { Circle, Line, Rect, Text as SvgText } from "react-native-svg";
+import Svg, { Circle, Line, Path, Rect, Text as SvgText } from "react-native-svg";
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -46,11 +46,15 @@ function Heading({ title, subtitle }: { title: string; subtitle?: string }) {
 function MarketPriceChart({ data }: { data: Candle[] }) {
   const [width, setWidth] = useState(340);
   const [selectedIndex, setSelectedIndex] = useState(Math.max(0, Math.min(47, data.length - 1)));
+  const [chartType, setChartType] = useState<"candles" | "line" | "area">("candles");
+  const [showMA, setShowMA] = useState(true);
+  const [showRSI, setShowRSI] = useState(false);
+  const [showMACD, setShowMACD] = useState(false);
   const touchStart = useRef({ x: 0, y: 0 });
   useEffect(() => setSelectedIndex(Math.max(0, Math.min(47, data.length - 1))), [data]);
-  const points = data.slice(-48);
+  const points = data.slice(-80);
   const selected = points[Math.max(0, Math.min(points.length - 1, selectedIndex))];
-  const height = 226, left = 62, right = 12, top = 12, priceBottom = 143, volumeTop = 158, volumeBottom = 194;
+  const height = 242, left = 64, right = 12, top = 12, priceBottom = 158, volumeTop = 174, volumeBottom = 207;
   const plotWidth = Math.max(100, width - left - right);
   const lows = points.map(p => p.low ?? p.close).filter(Number.isFinite);
   const highs = points.map(p => p.high ?? p.close).filter(Number.isFinite);
@@ -73,9 +77,34 @@ function MarketPriceChart({ data }: { data: Candle[] }) {
     const parsed = new Date(value.replace(" ", "T"));
     return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   };
+  const closes = points.map(p => p.close);
+  const sma20 = closes.map((_, i) => i < 19 ? null : closes.slice(i - 19, i + 1).reduce((a,b) => a+b, 0) / 20);
+  const linePath = closes.map((v,i) => (i ? "L" : "M") + (left + step * (i + .5)).toFixed(1) + " " + y(v).toFixed(1)).join(" ");
+  const areaPath = linePath + " L " + (left + step * (points.length - .5)).toFixed(1) + " " + priceBottom + " L " + (left + step * .5).toFixed(1) + " " + priceBottom + " Z";
+  const maPath = sma20.map((v,i) => v == null ? "" : (i && sma20[i-1] != null ? "L" : "M") + (left + step * (i + .5)).toFixed(1) + " " + y(v).toFixed(1)).filter(Boolean).join(" ");
+  const changes = closes.slice(1).map((v,i) => v - closes[i]);
+  const rsiValues = changes.map((_,i) => {
+    if (i < 13) return null;
+    const window = changes.slice(i-13,i+1), gains = window.filter(v=>v>0).reduce((a,b)=>a+b,0)/14, losses = -window.filter(v=>v<0).reduce((a,b)=>a+b,0)/14;
+    return losses === 0 ? 100 : 100 - (100 / (1 + gains / losses));
+  });
+  const ema = (values:number[], period:number) => {
+    const k=2/(period+1); let current=values[0] ?? 0;
+    return values.map((v,i)=>{ current = i===0 ? v : v*k+current*(1-k); return current; });
+  };
+  const macdFast=ema(closes,12), macdSlow=ema(closes,26), macdValues=macdFast.map((v,i)=>v-macdSlow[i]), macdSignal=ema(macdValues,9);
   if (!points.length) return <View style={styles.chartEmpty}><Text style={styles.muted}>No verified chart history is available.</Text></View>;
   const active = points[Math.max(0, Math.min(points.length - 1, selectedIndex))];
-  return <View>
+  const toggle = (active:boolean) => active ? styles.chartToolActive : styles.chartTool;
+  return <View style={{ gap: 9 }}>
+    <View style={styles.chartToolbar}>
+      {(["candles","line","area"] as const).map(type=><TouchableOpacity key={type} onPress={()=>setChartType(type)} style={[styles.chartTypeChip,chartType===type&&styles.chartTypeChipActive]}><Text style={[styles.chartTypeText,chartType===type&&styles.chartTypeTextActive]}>{type==="candles"?"CANDLES":type.toUpperCase()}</Text></TouchableOpacity>)}
+    </View>
+    <View style={styles.chartToolbar}>
+      <TouchableOpacity onPress={()=>setShowMA(v=>!v)} style={toggle(showMA)}><Text style={styles.chartToolText}>MA 20 {showMA?"ON":"OFF"}</Text></TouchableOpacity>
+      <TouchableOpacity onPress={()=>setShowRSI(v=>!v)} style={toggle(showRSI)}><Text style={styles.chartToolText}>RSI {showRSI?"ON":"OFF"}</Text></TouchableOpacity>
+      <TouchableOpacity onPress={()=>setShowMACD(v=>!v)} style={toggle(showMACD)}><Text style={styles.chartToolText}>MACD {showMACD?"ON":"OFF"}</Text></TouchableOpacity>
+    </View>
     <View
       onLayout={event => setWidth(Math.max(280, event.nativeEvent.layout.width))}
       onTouchStart={event => { touchStart.current = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY }; choosePoint(event); }}
@@ -85,46 +114,25 @@ function MarketPriceChart({ data }: { data: Candle[] }) {
       style={{ height, width: "100%" }}
     >
       <Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
-        {[0, 1, 2, 3].map(i => {
-          const yy = top + (priceBottom - top) * i / 3;
-          const value = ceiling - span * i / 3;
-          return <React.Fragment key={i}>
-            <Line x1={left} y1={yy} x2={width - right} y2={yy} stroke="#293650" strokeWidth={1} strokeDasharray="3 4" />
-            <SvgText x={left - 7} y={yy + 4} fill="#9AA8C2" fontSize={9} textAnchor="end">{fmt(value)}</SvgText>
-          </React.Fragment>;
-        })}
-        {points.map((point, i) => {
-          const x = left + step * (i + 0.5);
-          const open = point.open ?? point.close, close = point.close;
-          const high = point.high ?? Math.max(open, close), low = point.low ?? Math.min(open, close);
-          const rising = close >= open, color = rising ? "#72D6B0" : "#F18D91";
-          const bodyTop = Math.min(y(open), y(close));
-          const bodyHeight = Math.max(2, Math.abs(y(open) - y(close)));
-          const volumeHeight = (point.volume ?? 0) / maxVolume * (volumeBottom - volumeTop);
-          return <React.Fragment key={point.datetime + i}>
-            <Line x1={x} y1={y(high)} x2={x} y2={y(low)} stroke={color} strokeWidth={1.2} />
-            <Rect x={x - candleWidth / 2} y={bodyTop} width={candleWidth} height={bodyHeight} fill={color} rx={0.7} />
-            {volumeHeight > 0 ? <Rect x={x - candleWidth / 2} y={volumeBottom - volumeHeight} width={candleWidth} height={volumeHeight} fill={color} opacity={0.55} /> : null}
-          </React.Fragment>;
-        })}
-        {selected ? <Line x1={left + step * (selectedIndex + 0.5)} y1={top} x2={left + step * (selectedIndex + 0.5)} y2={volumeBottom} stroke="#AFCBFF" strokeWidth={1} strokeDasharray="3 3" /> : null}
-        <Line x1={left} y1={priceBottom} x2={width - right} y2={priceBottom} stroke="#293650" strokeWidth={1} />
-        <SvgText x={left} y={height - 8} fill="#9AA8C2" fontSize={9}>{dateLabel(points[0].datetime)}</SvgText>
-        <SvgText x={width - right} y={height - 8} fill="#9AA8C2" fontSize={9} textAnchor="end">{dateLabel(points[points.length - 1].datetime)}</SvgText>
-        <SvgText x={left} y={volumeTop - 5} fill="#9AA8C2" fontSize={8}>VOLUME</SvgText>
-        {selected ? <Circle cx={left + step * (selectedIndex + 0.5)} cy={y(selected.close)} r={3.5} fill="#AFCBFF" stroke="#080B14" strokeWidth={1.5} /> : null}
+        {[0,1,2,3].map(i=>{const yy=top+(priceBottom-top)*i/3, value=ceiling-span*i/3;return <React.Fragment key={i}><Line x1={left} y1={yy} x2={width-right} y2={yy} stroke="#293650" strokeWidth={1} strokeDasharray="3 4"/><SvgText x={left-7} y={yy+4} fill="#9AA8C2" fontSize={9} textAnchor="end">{fmt(value)}</SvgText></React.Fragment>;})}
+        {chartType==="area"?<Path d={areaPath} fill="#4D9BEA" opacity={0.16}/>:null}
+        {chartType==="line"||chartType==="area"?<Path d={linePath} fill="none" stroke="#55D6C2" strokeWidth={2.2}/>:null}
+        {chartType==="candles"?points.map((point,i)=>{const x=left+step*(i+.5), open=point.open??point.close, close=point.close, high=point.high??Math.max(open,close), low=point.low??Math.min(open,close), rising=close>=open, color=rising?"#72D6B0":"#F18D91", bodyTop=Math.min(y(open),y(close)), bodyHeight=Math.max(2,Math.abs(y(open)-y(close))), volumeHeight=(point.volume??0)/maxVolume*(volumeBottom-volumeTop);return <React.Fragment key={point.datetime+i}><Line x1={x} y1={y(high)} x2={x} y2={y(low)} stroke={color} strokeWidth={1.2}/><Rect x={x-candleWidth/2} y={bodyTop} width={candleWidth} height={bodyHeight} fill={color} rx={0.7}/>{volumeHeight>0?<Rect x={x-candleWidth/2} y={volumeBottom-volumeHeight} width={candleWidth} height={volumeHeight} fill={color} opacity={.55}/>:null}</React.Fragment>; }):null}
+        {chartType!=="candles"?points.map((point,i)=>{const volumeHeight=(point.volume??0)/maxVolume*(volumeBottom-volumeTop);return volumeHeight>0?<Rect key={point.datetime+i} x={left+step*(i+.5)-candleWidth/2} y={volumeBottom-volumeHeight} width={candleWidth} height={volumeHeight} fill="#557A9D" opacity={.55}/>:null;}):null}
+        {showMA&&sma20.length>19?<Path d={maPath} fill="none" stroke="#F2C66D" strokeWidth={1.5}/>:null}
+        {selected?<Line x1={left+step*(selectedIndex+.5)} y1={top} x2={left+step*(selectedIndex+.5)} y2={volumeBottom} stroke="#AFCBFF" strokeWidth={1} strokeDasharray="3 3"/>:null}
+        <Line x1={left} y1={priceBottom} x2={width-right} y2={priceBottom} stroke="#293650" strokeWidth={1}/>
+        <SvgText x={left} y={height-8} fill="#9AA8C2" fontSize={9}>{dateLabel(points[0].datetime)}</SvgText>
+        <SvgText x={width-right} y={height-8} fill="#9AA8C2" fontSize={9} textAnchor="end">{dateLabel(points[points.length-1].datetime)}</SvgText>
+        <SvgText x={left} y={volumeTop-5} fill="#9AA8C2" fontSize={8}>VOLUME</SvgText>
+        {selected?<Circle cx={left+step*(selectedIndex+.5)} cy={y(selected.close)} r={3.5} fill="#AFCBFF" stroke="#080B14" strokeWidth={1.5}/>:null}
       </Svg>
     </View>
-    {active ? <View style={styles.candleInfo}>
-      <Text style={styles.candleDate}>{active.datetime}</Text>
-      <View style={styles.candleValues}>
-        <Text style={styles.candleValue}>O {active.open == null ? "—" : fmt(active.open)}</Text>
-        <Text style={styles.candleValue}>H {active.high == null ? "—" : fmt(active.high)}</Text>
-        <Text style={styles.candleValue}>L {active.low == null ? "—" : fmt(active.low)}</Text>
-        <Text style={styles.candleValue}>C {fmt(active.close)}</Text>
-      </View>
-    </View> : null}
-    <Text style={styles.mutedSmall}>Drag across the chart to inspect candles · Volume shown when supplied</Text>
+    {showRSI?<View style={styles.indicatorPanel}><View style={styles.rowBetween}><Text style={styles.indicatorTitle}>RSI · 14</Text><Text style={styles.mutedSmall}>{rsiValues[selectedIndex-1]==null?"—":rsiValues[selectedIndex-1]!.toFixed(1)}</Text></View><Svg width="100%" height={76} viewBox={`0 0 ${width} 76`}><Line x1={left} y1={15} x2={width-right} y2={15} stroke="#6B7890" strokeDasharray="3 3"/><Line x1={left} y1={61} x2={width-right} y2={61} stroke="#6B7890" strokeDasharray="3 3"/><Path d={rsiValues.map((v,i)=>v==null?"":(i&&rsiValues[i-1]!=null?"L":"M")+(left+step*(i+1.5)).toFixed(1)+" "+(68-(v/100)*58).toFixed(1)).filter(Boolean).join(" ")} fill="none" stroke="#B99BFF" strokeWidth={1.8}/><SvgText x={left-6} y={18} fill="#9AA8C2" fontSize={8} textAnchor="end">70</SvgText><SvgText x={left-6} y={64} fill="#9AA8C2" fontSize={8} textAnchor="end">30</SvgText></Svg></View>:null}
+    {showMACD?<View style={styles.indicatorPanel}><View style={styles.rowBetween}><Text style={styles.indicatorTitle}>MACD · 12 / 26 / 9</Text><Text style={styles.mutedSmall}>{(macdValues[selectedIndex]??0).toFixed(4)}</Text></View><Svg width="100%" height={76} viewBox={`0 0 ${width} 76`}><Line x1={left} y1={38} x2={width-right} y2={38} stroke="#6B7890" strokeDasharray="3 3"/><Path d={macdValues.map((v,i)=>(i?"L":"M")+(left+step*(i+.5)).toFixed(1)+" "+(38-v/(Math.max(...macdValues.map(Math.abs),.00001))*28).toFixed(1)).join(" ")} fill="none" stroke="#55D6C2" strokeWidth={1.6}/><Path d={macdSignal.map((v,i)=>(i?"L":"M")+(left+step*(i+.5)).toFixed(1)+" "+(38-v/(Math.max(...macdValues.map(Math.abs),.00001))*28).toFixed(1)).join(" ")} fill="none" stroke="#F2C66D" strokeWidth={1.4}/></Svg></View>:null}
+    {active?<View style={styles.candleInfo}><Text style={styles.candleDate}>{active.datetime}</Text><View style={styles.candleValues}><Text style={styles.candleValue}>O {active.open==null?"—":fmt(active.open)}</Text><Text style={styles.candleValue}>H {active.high==null?"—":fmt(active.high)}</Text><Text style={styles.candleValue}>L {active.low==null?"—":fmt(active.low)}</Text><Text style={styles.candleValue}>C {fmt(active.close)}</Text></View></View>:null}
+    <View style={styles.chartLegend}><Text style={styles.legendText}>● Price</Text>{showMA?<Text style={styles.legendMA}>━ MA 20</Text>:null}<Text style={styles.legendVolume}>▥ Volume</Text></View>
+    <Text style={styles.mutedSmall}>Drag across the chart to inspect data points. Indicators are calculated from the displayed provider history and are educational analysis tools.</Text>
   </View>;
 }
 
