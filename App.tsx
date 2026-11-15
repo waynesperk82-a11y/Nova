@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Svg, { Circle, Line, Rect, Text as SvgText } from "react-native-svg";
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
@@ -45,8 +45,8 @@ function Heading({ title, subtitle }: { title: string; subtitle?: string }) {
 
 function MarketPriceChart({ data }: { data: Candle[] }) {
   const [width, setWidth] = useState(340);
-  const [selectedIndex, setSelectedIndex] = useState(Math.max(0, data.length - 1));
-  useEffect(() => setSelectedIndex(Math.max(0, Math.min(data.length - 1, data.length - 1))), [data]);
+  const [selectedIndex, setSelectedIndex] = useState(Math.max(0, Math.min(47, data.length - 1)));
+  useEffect(() => setSelectedIndex(Math.max(0, Math.min(47, data.length - 1))), [data]);
   const points = data.slice(-48);
   const selected = points[Math.max(0, Math.min(points.length - 1, selectedIndex))];
   const height = 226, left = 62, right = 12, top = 12, priceBottom = 143, volumeTop = 158, volumeBottom = 194;
@@ -137,6 +137,7 @@ export default function App() {
   const [history, setHistory] = useState<Candle[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const historyRequestId = useRef(0);
   const [marketLoading, setMarketLoading] = useState(false);
   const [marketError, setMarketError] = useState<string | null>(null);
   const [marketFetched, setMarketFetched] = useState<string | null>(null);
@@ -167,6 +168,7 @@ export default function App() {
   }, [watchlist]);
 
   const refreshHistory = useCallback(async (symbol: string, interval: MarketInterval) => {
+    const requestId = ++historyRequestId.current;
     if (!API_BASE) { setHistoryError("Backend URL is not configured."); setHistory([]); return; }
     setHistoryLoading(true); setHistoryError(null);
     try {
@@ -175,9 +177,10 @@ export default function App() {
       if (!response.ok) throw new Error(body.detail || `Chart API returned HTTP ${response.status}`);
       const result = body as HistoryResponse;
       if (!Array.isArray(result.data) || result.data.length < 2) throw new Error("Not enough verified history is available for this chart.");
-      setHistory(result.data);
-    } catch (e) { setHistory([]); setHistoryError(e instanceof Error ? e.message : "Could not load price history."); }
-    finally { setHistoryLoading(false); }
+      if (requestId === historyRequestId.current) setHistory(result.data);
+    } catch (e) {
+      if (requestId === historyRequestId.current) { setHistory([]); setHistoryError(e instanceof Error ? e.message : "Could not load price history."); }
+    } finally { if (requestId === historyRequestId.current) setHistoryLoading(false); }
   }, []);
 
   useEffect(() => { refreshMarkets(); }, [refreshMarkets]);
